@@ -3,183 +3,346 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Inventory - Settings Edition</title>
+    <title>Smart POS Pro v2 - Inventory & Split Bill</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f1f5f9; }
-        .card-glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; }
-        .input-field { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: white; width: 100%; }
-        .nav-tab { padding: 10px 20px; border-radius: 10px; cursor: pointer; transition: 0.3s; }
-        .active-tab { background: #6366f1; color: white; }
-        .qris-preview { width: 150px; height: 150px; object-fit: contain; background: white; border-radius: 10px; margin-top: 10px; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f1f5f9; overflow: hidden; }
+        .card-glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; }
+        .input-field { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 10px; color: white; width: 100%; font-size: 14px; }
+        .sidebar-item { transition: 0.3s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #94a3b8; }
+        .sidebar-item.active { background: #6366f1; color: white; box-shadow: 0 4px 15px rgba(99,102,241,0.3); }
+        /* Scanner UI */
+        .scanner-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .scanner-box { position: relative; width: 260px; height: 160px; border: 2px solid #6366f1; border-radius: 15px; overflow: hidden; }
+        .scan-line { position: absolute; width: 100%; height: 2px; background: #ef4444; top: 0; animation: scanAnim 2s infinite linear; }
+        @keyframes scanAnim { 0% { top: 0; } 100% { top: 100%; } }
+        @media print { .no-print { display: none; } body { background: white; color: black; } .print-only { display: block !important; } }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div id="toast-container" class="fixed top-5 right-5 z-[10000]"></div>
+<body class="h-full flex">
 
-    <div class="max-w-4xl mx-auto space-y-6">
-        <div class="flex gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
-            <div id="tab-kasir" onclick="switchTab('kasir')" class="nav-tab active-tab flex items-center gap-2"><i data-lucide="shopping-cart" class="w-4 h-4"></i> Kasir</div>
-            <div id="tab-settings" onclick="switchTab('settings')" class="nav-tab flex items-center gap-2 text-slate-400"><i data-lucide="settings" class="w-4 h-4"></i> Pengaturan QRIS</div>
+    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-8 no-print">
+        <div class="flex items-center gap-3 px-2">
+            <div class="bg-indigo-500 p-2 rounded-lg"><i data-lucide="layout-grid" class="text-white"></i></div>
+            <h1 class="font-extrabold text-xl tracking-tight">PRO<span class="text-indigo-500">POS</span></h1>
         </div>
+        <nav class="flex flex-col gap-2">
+            <div onclick="switchMenu('dashboard')" id="nav-dashboard" class="sidebar-item active"><i data-lucide="pie-chart"></i> Dashboard</div>
+            <div onclick="switchMenu('barang')" id="nav-barang" class="sidebar-item"><i data-lucide="box"></i> Kelola Barang</div>
+            <div onclick="switchMenu('transaksi')" id="nav-transaksi" class="sidebar-item"><i data-lucide="shopping-cart"></i> Transaksi</div>
+            <div onclick="switchMenu('referensi')" id="nav-referensi" class="sidebar-item"><i data-lucide="book-open"></i> Daftar Referensi</div>
+            <div onclick="switchMenu('report')" id="nav-report" class="sidebar-item"><i data-lucide="file-bar-chart"></i> Report Penjualan</div>
+            <div onclick="switchMenu('setting')" id="nav-setting" class="sidebar-item"><i data-lucide="settings-2"></i> Setting</div>
+        </nav>
+    </aside>
 
-        <div id="page-kasir" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="card-glass p-6">
-                    <h3 class="font-bold mb-4">Total Tagihan</h3>
-                    <input id="total-tagihan" type="number" class="input-field text-2xl font-black text-indigo-400" placeholder="0" oninput="hitungKembalian()">
-                </div>
-                <div class="card-glass p-6">
-                    <h3 class="font-bold mb-4 italic text-sm">Metode Pembayaran</h3>
-                    <div class="space-y-4">
-                        <input id="bayar-cash" type="number" value="0" class="input-field" placeholder="Bayar Cash" oninput="hitungKembalian()">
-                        <select id="pilih-qris" class="input-field" onchange="tampilkanQRIS()">
-                            <option value="none">-- Pilih QRIS --</option>
-                            <option value="shopeepay">ShopeePay</option>
-                            <option value="ovo">OVO</option>
-                            <option value="dana">DANA</option>
-                            <option value="linkaja">LinkAja</option>
-                        </select>
-                        <input id="bayar-qris" type="number" value="0" class="input-field text-green-400 hidden" placeholder="Nominal QRIS" oninput="hitungKembalian()">
-                    </div>
-                </div>
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50 no-print">
+            <h2 id="menu-title" class="text-xl font-bold">Dashboard</h2>
+            <div class="flex items-center gap-4">
+                <div id="clock" class="text-sm font-mono text-slate-400 bg-slate-900 px-4 py-2 rounded-full border border-slate-800"></div>
+                <button onclick="resetCurrentInputs()" class="bg-red-500/10 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-all">
+                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                </button>
             </div>
+        </header>
 
-            <div id="qris-display" class="hidden card-glass p-6 text-center space-y-4 animate-pulse">
-                <h2 class="font-bold text-lg" id="qris-title">SCAN DISINI</h2>
-                <div class="mx-auto bg-white p-2 w-48 h-48 rounded-lg">
-                    <img id="qris-img-main" src="" class="w-full h-full object-contain">
-                </div>
-                <button onclick="simulasiVerifikasi()" class="bg-indigo-600 px-6 py-2 rounded-full font-bold text-sm">CEK SALDO MASUK</button>
+        <div id="main-view" class="flex-1 overflow-y-auto p-8">
             </div>
+    </main>
 
-            <div class="card-glass p-6 text-center">
-                <h2 class="text-3xl font-black text-green-400" id="kembalian">Rp 0</h2>
-                <button id="btn-cetak" onclick="window.print()" class="hidden w-full mt-4 bg-green-600 py-3 rounded-xl font-bold">CETAK STRUK</button>
-            </div>
-        </div>
-
-        <div id="page-settings" class="hidden space-y-6">
-            <div class="card-glass p-6">
-                <h3 class="font-bold mb-6 flex items-center gap-2 text-indigo-400"><i data-lucide="upload"></i> Upload Foto QRIS Toko</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="border-b border-slate-800 pb-4">
-                        <label class="text-sm font-bold">QRIS ShopeePay</label>
-                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'shopeepay')" class="block w-full text-xs text-slate-400 mt-2">
-                        <img id="prev-shopeepay" class="qris-preview">
-                    </div>
-                    <div class="border-b border-slate-800 pb-4">
-                        <label class="text-sm font-bold">QRIS OVO</label>
-                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'ovo')" class="block w-full text-xs text-slate-400 mt-2">
-                        <img id="prev-ovo" class="qris-preview">
-                    </div>
-                    <div class="border-b border-slate-800 pb-4">
-                        <label class="text-sm font-bold">QRIS DANA</label>
-                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'dana')" class="block w-full text-xs text-slate-400 mt-2">
-                        <img id="prev-dana" class="qris-preview">
-                    </div>
-                    <div class="border-b border-slate-800 pb-4">
-                        <label class="text-sm font-bold">QRIS LinkAja</label>
-                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'linkaja')" class="block w-full text-xs text-slate-400 mt-2">
-                        <img id="prev-linkaja" class="qris-preview">
-                    </div>
-                </div>
-                <p class="mt-6 text-xs text-slate-500 italic">*Foto tersimpan otomatis di browser ini.</p>
-            </div>
-        </div>
-    </div>
+    <div id="scanner-ui" class="hidden"></div>
+    <div id="toast-container" class="fixed top-5 right-5 z-[10000] flex flex-col gap-2"></div>
 
     <script>
-        // --- TAB SYSTEM ---
-        function switchTab(tab) {
-            document.getElementById('page-kasir').classList.toggle('hidden', tab !== 'kasir');
-            document.getElementById('page-settings').classList.toggle('hidden', tab !== 'settings');
-            document.getElementById('tab-kasir').className = `nav-tab ${tab === 'kasir' ? 'active-tab' : 'text-slate-400'}`;
-            document.getElementById('tab-settings').className = `nav-tab ${tab === 'settings' ? 'active-tab' : 'text-slate-400'}`;
+        // --- GLOBAL STATE ---
+        let db_barang = JSON.parse(localStorage.getItem('propos_items')) || [];
+        let db_transaksi = JSON.parse(localStorage.getItem('propos_trx')) || [];
+        let config = JSON.parse(localStorage.getItem('propos_cfg')) || { shop: "Toko Saya", logo: "" };
+        let cart = [];
+        let scannerReader = null;
+
+        // --- FORMATTERS ---
+        const fmtRp = (n) => "Rp " + new Intl.NumberFormat('id-ID').format(n || 0);
+
+        // --- NAVIGATION ---
+        function switchMenu(menu) {
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + menu).classList.add('active');
+            document.getElementById('menu-title').innerText = menu.replace(/^\w/, c => c.toUpperCase());
+            
+            const view = document.getElementById('main-view');
+            if (menu === 'dashboard') renderDashboard(view);
+            if (menu === 'barang') renderBarang(view);
+            if (menu === 'transaksi') renderTransaksi(view);
+            if (menu === 'setting') renderSetting(view);
+            if (menu === 'report') renderReport(view);
+            if (menu === 'referensi') renderReferensi(view);
+            
             lucide.createIcons();
         }
 
-        // --- UPLOAD SYSTEM (LOCALSTORAGE) ---
-        function uploadQRIS(event, key) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64Image = e.target.result;
-                localStorage.setItem('qris_' + key, base64Image); // Simpan ke memori browser
-                document.getElementById('prev-' + key).src = base64Image;
-                showToast("Berhasil update QRIS " + key, "success");
+        // --- 1. KELOLA BARANG ---
+        function renderBarang(view) {
+            view.innerHTML = `
+                <div class="card-glass p-6 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="flex gap-2">
+                            <input id="b-barcode" class="input-field" placeholder="Barcode">
+                            <button onclick="startScan('b-barcode')" class="bg-indigo-600 p-2 rounded-lg"><i data-lucide="camera" class="w-5 h-5"></i></button>
+                        </div>
+                        <input id="b-nama" class="input-field" placeholder="Nama Barang">
+                        <input id="b-beli" type="number" class="input-field" placeholder="Harga Beli (Angka)">
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <input id="b-jual" type="number" class="input-field" placeholder="Harga Jual">
+                        <input id="b-awal" type="number" class="input-field" placeholder="Stok Awal">
+                        <input id="b-masuk" type="number" class="input-field" placeholder="Barang Masuk" value="0">
+                        <input id="b-rusak" type="number" class="input-field" placeholder="Rusak" value="0">
+                    </div>
+                    <button onclick="simpanBarang()" class="w-full mt-4 bg-indigo-600 py-3 rounded-xl font-bold">SIMPAN DATA BARANG</button>
+                </div>
+                <div class="card-glass overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-800">
+                            <tr>
+                                <th class="p-4">Nama</th><th class="p-4">Harga</th><th class="p-4">Stok Akhir</th><th class="p-4">Status</th><th class="p-4">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list-barang-body"></tbody>
+                    </table>
+                </div>
+            `;
+            loadListBarang();
+        }
+
+        function loadListBarang() {
+            const body = document.getElementById('list-barang-body');
+            body.innerHTML = db_barang.map((item, idx) => {
+                const stokAkhir = (item.awal + item.masuk) - (item.rusak + (item.terjual || 0));
+                let status = '<span class="text-green-400">Tersedia</span>';
+                if(stokAkhir <= 0) status = '<span class="text-red-500 font-bold animate-pulse">HABIS!</span>';
+                else if(stokAkhir < 10) status = '<span class="text-orange-400">Hampir Habis</span>';
+
+                return `
+                    <tr class="border-b border-slate-800">
+                        <td class="p-4">${item.nama}</td>
+                        <td class="p-4">${fmtRp(item.jual)}</td>
+                        <td class="p-4 font-bold">${stokAkhir}</td>
+                        <td class="p-4">${status}</td>
+                        <td class="p-4 flex gap-2">
+                            <button onclick="deleteItem(${idx})" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function simpanBarang() {
+            const item = {
+                barcode: document.getElementById('b-barcode').value,
+                nama: document.getElementById('b-nama').value,
+                beli: parseInt(document.getElementById('b-beli').value),
+                jual: parseInt(document.getElementById('b-jual').value),
+                awal: parseInt(document.getElementById('b-awal').value),
+                masuk: parseInt(document.getElementById('b-masuk').value),
+                rusak: parseInt(document.getElementById('b-rusak').value),
+                terjual: 0
             };
-            reader.readAsDataURL(file);
+            db_barang.push(item);
+            localStorage.setItem('propos_items', JSON.stringify(db_barang));
+            showToast("Barang Berhasil Disimpan", "success");
+            loadListBarang();
+            resetCurrentInputs();
         }
 
-        function loadSavedQRIS() {
-            const keys = ['shopeepay', 'ovo', 'dana', 'linkaja'];
-            keys.forEach(k => {
-                const saved = localStorage.getItem('qris_' + k);
-                if(saved) document.getElementById('prev-' + k).src = saved;
-            });
+        // --- 2. TRANSAKSI & SPLIT BILL ---
+        function renderTransaksi(view) {
+            const now = new Date();
+            const trxId = "TRX-" + now.getTime();
+            view.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <div class="card-glass p-6">
+                            <div class="flex justify-between text-xs text-slate-400 mb-4">
+                                <span>${trxId}</span><span>${now.toLocaleString()}</span>
+                            </div>
+                            <div class="flex gap-2 mb-4">
+                                <select id="t-select" class="input-field" onchange="addToCart(this.value)">
+                                    <option value="">-- Pilih Barang --</option>
+                                    ${db_barang.map(i => `<option value="${i.barcode}">${i.nama} (${fmtRp(i.jual)})</option>`)}
+                                </select>
+                                <button onclick="startScan('t-select')" class="bg-indigo-600 px-4 rounded-lg"><i data-lucide="camera"></i></button>
+                            </div>
+                            <div id="cart-items" class="space-y-2 min-h-[200px]"></div>
+                        </div>
+                    </div>
+                    <div class="card-glass p-6 space-y-4">
+                        <h3 class="font-bold">Pembayaran</h3>
+                        <div class="bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20 text-center">
+                            <p class="text-xs text-indigo-400 uppercase font-bold">Total Tagihan</p>
+                            <h2 id="t-total-val" class="text-4xl font-black">Rp 0</h2>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] text-slate-400 uppercase">Nominal Cash</label>
+                                <input id="pay-cash" type="number" class="input-field text-lg" value="0" oninput="calcSplit()">
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400 uppercase">Metode QRIS</label>
+                                <select id="pay-qris-method" class="input-field" onchange="calcSplit()">
+                                    <option value="">Tanpa QRIS</option>
+                                    <option value="ShopeePay">ShopeePay</option>
+                                    <option value="OVO">OVO</option>
+                                    <option value="DANA">DANA</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="qris-nominal-box" class="hidden">
+                            <label class="text-[10px] text-green-400 uppercase font-bold">Sisa Tagihan (QRIS)</label>
+                            <input id="pay-qris" type="number" class="input-field text-xl text-green-400 font-bold" readonly>
+                        </div>
+                        <div class="border-t border-slate-700 pt-4">
+                            <div class="flex justify-between font-bold">
+                                <span>Kembalian:</span><span id="t-change" class="text-green-400">Rp 0</span>
+                            </div>
+                        </div>
+                        <button onclick="prosesTrx()" class="w-full bg-green-600 py-4 rounded-xl font-bold text-lg shadow-lg">BAYAR & CETAK STRUK</button>
+                    </div>
+                </div>
+            `;
         }
 
-        // --- KASIR LOGIC ---
-        function tampilkanQRIS() {
-            const tipe = document.getElementById('pilih-qris').value;
-            const container = document.getElementById('qris-display');
-            const inputQris = document.getElementById('bayar-qris');
-            const imgMain = document.getElementById('qris-img-main');
+        function addToCart(barcode) {
+            if(!barcode) return;
+            const item = db_barang.find(i => i.barcode === barcode);
+            if(!item) return;
+            
+            const existing = cart.find(c => c.barcode === barcode);
+            if(existing) existing.qty++;
+            else cart.push({ ...item, qty: 1 });
+            
+            updateCartUI();
+        }
 
-            if(tipe !== 'none') {
-                const savedImg = localStorage.getItem('qris_' + tipe);
-                if(!savedImg) {
-                    showToast("Foto QRIS belum diupload di Settings!", "error");
-                    return;
-                }
-                container.classList.remove('hidden');
-                inputQris.classList.remove('hidden');
-                imgMain.src = savedImg;
-                document.getElementById('qris-title').innerText = "QRIS " + tipe.toUpperCase();
+        function updateCartUI() {
+            const container = document.getElementById('cart-items');
+            let total = 0;
+            container.innerHTML = cart.map((c, idx) => {
+                total += c.jual * c.qty;
+                return `
+                    <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg">
+                        <div><p class="font-bold">${c.nama}</p><p class="text-xs text-slate-400">${fmtRp(c.jual)} x ${c.qty}</p></div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="cart[${idx}].qty++; updateCartUI()" class="bg-slate-700 p-1 rounded"><i data-lucide="plus" class="w-3 h-3"></i></button>
+                            <button onclick="deleteCart(${idx})" class="bg-red-500/20 text-red-400 p-1 rounded"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('t-total-val').innerText = fmtRp(total);
+            window.currentTotal = total;
+            calcSplit();
+            lucide.createIcons();
+        }
+
+        function calcSplit() {
+            const total = window.currentTotal || 0;
+            const cash = parseInt(document.getElementById('pay-cash').value) || 0;
+            const qrisMethod = document.getElementById('pay-qris-method').value;
+            const qrisBox = document.getElementById('qris-nominal-box');
+            const qrisInput = document.getElementById('pay-qris');
+            const changeEl = document.getElementById('t-change');
+
+            if(qrisMethod !== "") {
+                qrisBox.classList.remove('hidden');
+                const sisa = total - cash;
+                qrisInput.value = sisa > 0 ? sisa : 0;
+                changeEl.innerText = cash > total ? fmtRp(cash - total) : "Rp 0";
             } else {
-                container.classList.add('hidden');
-                inputQris.classList.add('hidden');
+                qrisBox.classList.add('hidden');
+                changeEl.innerText = cash > total ? fmtRp(cash - total) : "Rp 0";
             }
         }
 
-        function hitungKembalian() {
-            const tagihan = parseInt(document.getElementById('total-tagihan').value) || 0;
-            const cash = parseInt(document.getElementById('bayar-cash').value) || 0;
-            const qris = parseInt(document.getElementById('bayar-qris').value) || 0;
-            const kembali = (cash + qris) - tagihan;
+        // --- SCANNER SYSTEM ---
+        function startScan(targetId) {
+            const ui = document.getElementById('scanner-ui');
+            ui.innerHTML = `
+                <div class="scanner-overlay">
+                    <div class="scanner-box"><video id="scan-v" class="w-full h-full object-cover"></video><div class="scan-line"></div></div>
+                    <button onclick="stopScan()" class="mt-8 bg-red-600 px-8 py-2 rounded-full font-bold">BATAL</button>
+                </div>
+            `;
+            ui.classList.remove('hidden');
+            if(!scannerReader) scannerReader = new ZXing.BrowserMultiFormatReader();
             
-            document.getElementById('kembalian').innerText = "Rp " + kembali.toLocaleString();
-            document.getElementById('btn-cetak').classList.toggle('hidden', (cash + qris) < tagihan || tagihan <= 0);
+            scannerReader.decodeFromVideoDevice(null, 'scan-v', (result, err) => {
+                if(result) {
+                    document.getElementById(targetId).value = result.text;
+                    if(targetId === 't-select') addToCart(result.text);
+                    stopScan();
+                    showToast("Scan Berhasil: " + result.text, "success");
+                }
+            });
         }
 
-        function simulasiVerifikasi() {
-            const qris = document.getElementById('bayar-qris').value;
-            if(qris <= 0) return showToast("Masukkan nominal!", "error");
-            
-            showToast("Memverifikasi saldo...", "info");
-            setTimeout(() => {
-                const msg = new SpeechSynthesisUtterance(`Pembayaran berhasil sebesar ${qris} rupiah.`);
-                msg.lang = 'id-ID';
-                window.speechSynthesis.speak(msg);
-                showToast("PEMBAYARAN SUKSES!", "success");
-            }, 1500);
+        function stopScan() {
+            if(scannerReader) scannerReader.reset();
+            document.getElementById('scanner-ui').classList.add('hidden');
+        }
+
+        // --- UTILS ---
+        function resetCurrentInputs() {
+            document.querySelectorAll('input').forEach(i => i.value = (i.type === 'number' ? 0 : ''));
+            cart = [];
+            const cartList = document.getElementById('cart-items');
+            if(cartList) cartList.innerHTML = '';
+            showToast("Form Direset", "info");
         }
 
         function showToast(m, t) {
             const c = document.getElementById('toast-container');
             const d = document.createElement('div');
-            d.className = `p-4 mb-2 rounded-xl text-white font-bold text-xs shadow-2xl ${t==='success'?'bg-green-600':t==='info'?'bg-indigo-600':'bg-red-600'}`;
+            d.className = `p-4 rounded-xl text-white font-bold text-xs shadow-2xl ${t==='success'?'bg-green-600':'bg-indigo-600'}`;
             d.textContent = m;
             c.appendChild(d);
             setTimeout(() => d.remove(), 3000);
         }
 
+        function renderDashboard(view) {
+            view.innerHTML = `<div class="card-glass p-8 text-center"><h1 class="text-2xl">Selamat Datang di ProPOS</h1><p class="text-slate-400 mt-2">Gunakan menu di samping untuk mengelola toko Anda.</p></div>`;
+        }
+
+        function renderSetting(view) {
+            view.innerHTML = `
+                <div class="card-glass p-8 max-w-md mx-auto space-y-6">
+                    <h2 class="text-xl font-bold">Setting Struk</h2>
+                    <div>
+                        <label class="text-xs text-slate-400 uppercase">Nama Toko</label>
+                        <input id="cfg-shop" class="input-field" value="${config.shop}">
+                    </div>
+                    <button onclick="saveCfg()" class="w-full bg-indigo-600 py-3 rounded-xl font-bold">SIMPAN SETTING</button>
+                </div>
+            `;
+        }
+
+        function saveCfg() {
+            config.shop = document.getElementById('cfg-shop').value;
+            localStorage.setItem('propos_cfg', JSON.stringify(config));
+            showToast("Setting Tersimpan", "success");
+        }
+
         window.onload = () => {
-            lucide.createIcons();
-            loadSavedQRIS();
+            switchMenu('dashboard');
+            setInterval(() => {
+                document.getElementById('clock').innerText = new Date().toLocaleTimeString('id-ID');
+            }, 1000);
         };
     </script>
 </body>
