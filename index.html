@@ -315,12 +315,68 @@
 
         // --- UTILS ---
         function renderSetting(v) {
-            v.innerHTML = `<div class="card-glass p-8 max-w-md mx-auto space-y-4">
-                <h3 class="font-bold">Pengaturan Toko</h3>
-                <input id="s-name" class="input-field" value="${config.name}">
-                <button onclick="config.name=document.getElementById('s-name').value;localStorage.setItem('propos_v35_cfg', JSON.stringify(config));alert('Saved')" class="w-full bg-indigo-600 py-3 rounded-xl font-bold">SIMPAN</button>
-            </div>`;
-        }
+    v.innerHTML = `
+        <div class="max-w-2xl mx-auto space-y-6">
+            <div class="card-glass p-8 space-y-6">
+                <h2 class="text-2xl font-bold text-indigo-400 flex items-center gap-2">
+                    <i data-lucide="settings"></i> Branding & Identitas Toko
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-500 block mb-1">NAMA TOKO</label>
+                        <input id="s-name" class="input-field" value="${config.name}" placeholder="Contoh: Toko Berkah Jaya">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 block mb-1">NOMOR WA / QRIS</label>
+                        <input id="s-qris" class="input-field" value="${config.qris || ''}" placeholder="0812xxxx">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-500 block mb-1">ALAMAT TOKO (Muncul di Nota)</label>
+                    <textarea id="s-addr" class="input-field h-20" placeholder="Jl. Raya No. 123...">${config.address || ''}</textarea>
+                </div>
+
+                <button onclick="saveAdvancedSettings()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-4 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20">
+                    SIMPAN PERUBAHAN
+                </button>
+            </div>
+
+            <div class="card-glass p-8 border border-red-500/20">
+                <h3 class="text-red-400 font-bold mb-4 flex items-center gap-2">
+                    <i data-lucide="alert-triangle"></i> Area Berbahaya
+                </h3>
+                <p class="text-sm text-slate-400 mb-4">Menghapus database akan menghilangkan semua data barang dan riwayat penjualan secara permanen.</p>
+                <button onclick="resetDatabase()" class="bg-red-500/10 text-red-500 border border-red-500/50 px-6 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-all text-sm font-bold">
+                    RESET SEMUA DATA
+                </button>
+            </div>
+        </div>
+    `;
+    lucide.createIcons();
+}
+
+// Fungsi tambahan untuk menyimpan settingan baru
+function saveAdvancedSettings() {
+    config.name = document.getElementById('s-name').value;
+    config.qris = document.getElementById('s-qris').value;
+    config.address = document.getElementById('s-addr').value;
+    
+    localStorage.setItem('propos_v35_cfg', JSON.stringify(config));
+    alert("Konfigurasi Toko Berhasil Diperbarui!");
+    location.reload(); // Reload agar nama toko di header berubah
+}
+
+// Fungsi untuk hapus semua data
+function resetDatabase() {
+    if(confirm("PERINGATAN! Semua data produk dan penjualan akan dihapus. Lanjutkan?")) {
+        localStorage.clear();
+        alert("Database telah dibersihkan.");
+        location.reload();
+    }
+}
+
 
         let scannerReader = null;
         function startScan(tid) {
