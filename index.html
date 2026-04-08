@@ -1,66 +1,186 @@
-<!DOCTYPE html>
-<html lang="id">
+<!doctype html>
+<html lang="id" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Saya - Full Scanner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <title>POS Inventory - Settings Edition</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f1f5f9; }
+        .card-glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; }
+        .input-field { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: white; width: 100%; }
+        .nav-tab { padding: 10px 20px; border-radius: 10px; cursor: pointer; transition: 0.3s; }
+        .active-tab { background: #6366f1; color: white; }
+        .qris-preview { width: 150px; height: 150px; object-fit: contain; background: white; border-radius: 10px; margin-top: 10px; }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-    
-    <header class="bg-slate-900 p-4 border-b border-slate-800 text-center">
-        <h1 class="font-bold text-indigo-400">INVENTORY SCANNER</h1>
-    </header>
+<body class="p-4 md:p-8">
+    <div id="toast-container" class="fixed top-5 right-5 z-[10000]"></div>
 
-    <main class="p-4 max-w-md mx-auto space-y-4">
-        <div id="scanner-container" class="hidden relative overflow-hidden rounded-2xl bg-black aspect-video border-2 border-indigo-500">
-            <video id="video" class="w-full h-full object-cover"></video>
-            <div class="absolute inset-0 border-2 border-red-500 opacity-50 m-10 pointer-events-none"></div>
+    <div class="max-w-4xl mx-auto space-y-6">
+        <div class="flex gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
+            <div id="tab-kasir" onclick="switchTab('kasir')" class="nav-tab active-tab flex items-center gap-2"><i data-lucide="shopping-cart" class="w-4 h-4"></i> Kasir</div>
+            <div id="tab-settings" onclick="switchTab('settings')" class="nav-tab flex items-center gap-2 text-slate-400"><i data-lucide="settings" class="w-4 h-4"></i> Pengaturan QRIS</div>
         </div>
 
-        <button id="btn-scan" onclick="startScan()" class="w-full bg-indigo-600 py-4 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2">
-            📷 BUKA KAMERA SCAN
-        </button>
-        
-        <button id="btn-stop" onclick="stopScan()" class="hidden w-full bg-red-600 py-4 rounded-xl font-bold shadow-lg">
-            🛑 BERHENTI SCAN
-        </button>
+        <div id="page-kasir" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card-glass p-6">
+                    <h3 class="font-bold mb-4">Total Tagihan</h3>
+                    <input id="total-tagihan" type="number" class="input-field text-2xl font-black text-indigo-400" placeholder="0" oninput="hitungKembalian()">
+                </div>
+                <div class="card-glass p-6">
+                    <h3 class="font-bold mb-4 italic text-sm">Metode Pembayaran</h3>
+                    <div class="space-y-4">
+                        <input id="bayar-cash" type="number" value="0" class="input-field" placeholder="Bayar Cash" oninput="hitungKembalian()">
+                        <select id="pilih-qris" class="input-field" onchange="tampilkanQRIS()">
+                            <option value="none">-- Pilih QRIS --</option>
+                            <option value="shopeepay">ShopeePay</option>
+                            <option value="ovo">OVO</option>
+                            <option value="dana">DANA</option>
+                            <option value="linkaja">LinkAja</option>
+                        </select>
+                        <input id="bayar-qris" type="number" value="0" class="input-field text-green-400 hidden" placeholder="Nominal QRIS" oninput="hitungKembalian()">
+                    </div>
+                </div>
+            </div>
 
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
-            <p class="text-xs text-slate-500 uppercase font-bold">Hasil Barcode:</p>
-            <p id="result" class="text-xl font-mono mt-1 text-green-400">Belum ada data</p>
+            <div id="qris-display" class="hidden card-glass p-6 text-center space-y-4 animate-pulse">
+                <h2 class="font-bold text-lg" id="qris-title">SCAN DISINI</h2>
+                <div class="mx-auto bg-white p-2 w-48 h-48 rounded-lg">
+                    <img id="qris-img-main" src="" class="w-full h-full object-contain">
+                </div>
+                <button onclick="simulasiVerifikasi()" class="bg-indigo-600 px-6 py-2 rounded-full font-bold text-sm">CEK SALDO MASUK</button>
+            </div>
+
+            <div class="card-glass p-6 text-center">
+                <h2 class="text-3xl font-black text-green-400" id="kembalian">Rp 0</h2>
+                <button id="btn-cetak" onclick="window.print()" class="hidden w-full mt-4 bg-green-600 py-3 rounded-xl font-bold">CETAK STRUK</button>
+            </div>
         </div>
-    </main>
+
+        <div id="page-settings" class="hidden space-y-6">
+            <div class="card-glass p-6">
+                <h3 class="font-bold mb-6 flex items-center gap-2 text-indigo-400"><i data-lucide="upload"></i> Upload Foto QRIS Toko</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="border-b border-slate-800 pb-4">
+                        <label class="text-sm font-bold">QRIS ShopeePay</label>
+                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'shopeepay')" class="block w-full text-xs text-slate-400 mt-2">
+                        <img id="prev-shopeepay" class="qris-preview">
+                    </div>
+                    <div class="border-b border-slate-800 pb-4">
+                        <label class="text-sm font-bold">QRIS OVO</label>
+                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'ovo')" class="block w-full text-xs text-slate-400 mt-2">
+                        <img id="prev-ovo" class="qris-preview">
+                    </div>
+                    <div class="border-b border-slate-800 pb-4">
+                        <label class="text-sm font-bold">QRIS DANA</label>
+                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'dana')" class="block w-full text-xs text-slate-400 mt-2">
+                        <img id="prev-dana" class="qris-preview">
+                    </div>
+                    <div class="border-b border-slate-800 pb-4">
+                        <label class="text-sm font-bold">QRIS LinkAja</label>
+                        <input type="file" accept="image/*" onchange="uploadQRIS(event, 'linkaja')" class="block w-full text-xs text-slate-400 mt-2">
+                        <img id="prev-linkaja" class="qris-preview">
+                    </div>
+                </div>
+                <p class="mt-6 text-xs text-slate-500 italic">*Foto tersimpan otomatis di browser ini.</p>
+            </div>
+        </div>
+    </div>
 
     <script>
-        let selectedDeviceId;
-        const codeReader = new ZXing.BrowserMultiFormatReader();
+        // --- TAB SYSTEM ---
+        function switchTab(tab) {
+            document.getElementById('page-kasir').classList.toggle('hidden', tab !== 'kasir');
+            document.getElementById('page-settings').classList.toggle('hidden', tab !== 'settings');
+            document.getElementById('tab-kasir').className = `nav-tab ${tab === 'kasir' ? 'active-tab' : 'text-slate-400'}`;
+            document.getElementById('tab-settings').className = `nav-tab ${tab === 'settings' ? 'active-tab' : 'text-slate-400'}`;
+            lucide.createIcons();
+        }
 
-        async function startScan() {
-            document.getElementById('scanner-container').classList.remove('hidden');
-            document.getElementById('btn-scan').classList.add('hidden');
-            document.getElementById('btn-stop').classList.remove('hidden');
+        // --- UPLOAD SYSTEM (LOCALSTORAGE) ---
+        function uploadQRIS(event, key) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                localStorage.setItem('qris_' + key, base64Image); // Simpan ke memori browser
+                document.getElementById('prev-' + key).src = base64Image;
+                showToast("Berhasil update QRIS " + key, "success");
+            };
+            reader.readAsDataURL(file);
+        }
 
-            codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
-                if (result) {
-                    document.getElementById('result').textContent = result.text;
-                    // Suara bip sederhana
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const osc = audioCtx.createOscillator();
-                    osc.connect(audioCtx.destination);
-                    osc.start();
-                    osc.stop(audioCtx.currentTime + 0.1);
-                }
+        function loadSavedQRIS() {
+            const keys = ['shopeepay', 'ovo', 'dana', 'linkaja'];
+            keys.forEach(k => {
+                const saved = localStorage.getItem('qris_' + k);
+                if(saved) document.getElementById('prev-' + k).src = saved;
             });
         }
 
-        function stopScan() {
-            codeReader.reset();
-            document.getElementById('scanner-container').classList.add('hidden');
-            document.getElementById('btn-scan').classList.remove('hidden');
-            document.getElementById('btn-stop').classList.add('hidden');
+        // --- KASIR LOGIC ---
+        function tampilkanQRIS() {
+            const tipe = document.getElementById('pilih-qris').value;
+            const container = document.getElementById('qris-display');
+            const inputQris = document.getElementById('bayar-qris');
+            const imgMain = document.getElementById('qris-img-main');
+
+            if(tipe !== 'none') {
+                const savedImg = localStorage.getItem('qris_' + tipe);
+                if(!savedImg) {
+                    showToast("Foto QRIS belum diupload di Settings!", "error");
+                    return;
+                }
+                container.classList.remove('hidden');
+                inputQris.classList.remove('hidden');
+                imgMain.src = savedImg;
+                document.getElementById('qris-title').innerText = "QRIS " + tipe.toUpperCase();
+            } else {
+                container.classList.add('hidden');
+                inputQris.classList.add('hidden');
+            }
         }
+
+        function hitungKembalian() {
+            const tagihan = parseInt(document.getElementById('total-tagihan').value) || 0;
+            const cash = parseInt(document.getElementById('bayar-cash').value) || 0;
+            const qris = parseInt(document.getElementById('bayar-qris').value) || 0;
+            const kembali = (cash + qris) - tagihan;
+            
+            document.getElementById('kembalian').innerText = "Rp " + kembali.toLocaleString();
+            document.getElementById('btn-cetak').classList.toggle('hidden', (cash + qris) < tagihan || tagihan <= 0);
+        }
+
+        function simulasiVerifikasi() {
+            const qris = document.getElementById('bayar-qris').value;
+            if(qris <= 0) return showToast("Masukkan nominal!", "error");
+            
+            showToast("Memverifikasi saldo...", "info");
+            setTimeout(() => {
+                const msg = new SpeechSynthesisUtterance(`Pembayaran berhasil sebesar ${qris} rupiah.`);
+                msg.lang = 'id-ID';
+                window.speechSynthesis.speak(msg);
+                showToast("PEMBAYARAN SUKSES!", "success");
+            }, 1500);
+        }
+
+        function showToast(m, t) {
+            const c = document.getElementById('toast-container');
+            const d = document.createElement('div');
+            d.className = `p-4 mb-2 rounded-xl text-white font-bold text-xs shadow-2xl ${t==='success'?'bg-green-600':t==='info'?'bg-indigo-600':'bg-red-600'}`;
+            d.textContent = m;
+            c.appendChild(d);
+            setTimeout(() => d.remove(), 3000);
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+            loadSavedQRIS();
+        };
     </script>
 </body>
 </html>
