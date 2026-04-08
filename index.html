@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProPOS v3.2 - QRIS Integrated</title>
+    <title>ProPOS v3.3 - Dynamic Master Data</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -15,19 +14,22 @@
         .input-field { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: white; width: 100%; }
         .sidebar-item { transition: 0.3s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #94a3b8; }
         .sidebar-item.active { background: #6366f1; color: white; }
-        .qris-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        .btn-icon { padding: 8px; border-radius: 8px; transition: 0.2s; }
+        .btn-edit { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
+        .btn-delete { color: #f87171; background: rgba(248, 113, 113, 0.1); }
+        .btn-edit:hover { background: #fbbf24; color: black; }
+        .btn-delete:hover { background: #f87171; color: white; }
     </style>
 </head>
 <body class="h-full flex">
 
-    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-8 no-print">
+    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-8">
         <div class="flex items-center gap-3 px-2">
             <div class="bg-indigo-500 p-2 rounded-lg"><i data-lucide="zap" class="text-white"></i></div>
             <h1 class="font-extrabold text-xl tracking-tighter">PRO<span class="text-indigo-500">POS</span></h1>
         </div>
         <nav class="flex flex-col gap-2">
             <div onclick="switchMenu('dashboard')" id="nav-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard"></i> Dashboard</div>
-            <div onclick="switchMenu('barang')" id="nav-barang" class="sidebar-item"><i data-lucide="package"></i> Kelola Barang</div>
             <div onclick="switchMenu('transaksi')" id="nav-transaksi" class="sidebar-item"><i data-lucide="shopping-cart"></i> Transaksi</div>
             <div onclick="switchMenu('referensi')" id="nav-referensi" class="sidebar-item"><i data-lucide="book-open"></i> Referensi</div>
             <div onclick="switchMenu('setting')" id="nav-setting" class="sidebar-item"><i data-lucide="settings"></i> Setting</div>
@@ -35,287 +37,196 @@
     </aside>
 
     <main class="flex-1 flex flex-col overflow-hidden">
-        <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50 no-print">
-            <h2 id="menu-title" class="text-xl font-bold">Dashboard</h2>
+        <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50">
+            <h2 id="menu-title" class="text-xl font-bold uppercase tracking-widest text-indigo-400">Dashboard</h2>
             <div id="clock" class="text-sm font-mono text-slate-500"></div>
         </header>
         <div id="main-view" class="flex-1 overflow-y-auto p-8"></div>
     </main>
 
-    <div id="qris-modal" class="hidden qris-overlay">
-        <div class="bg-white p-8 rounded-3xl text-center max-w-sm w-full mx-4 shadow-2xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-black font-extrabold text-xl">SCAN QRIS</h3>
-                <button onclick="closeQris()" class="text-slate-400"><i data-lucide="x"></i></button>
-            </div>
-            <div id="qris-container" class="bg-slate-100 p-4 rounded-2xl mb-4 flex items-center justify-center">
-                <img id="qris-image" src="" alt="QRIS Code" class="w-full h-auto">
-            </div>
-            <div class="text-slate-500 text-sm mb-2">Total Tagihan:</div>
-            <div id="qris-amount" class="text-3xl font-black text-indigo-600 mb-6">Rp 0</div>
-            <button onclick="confirmPayment()" class="w-full bg-green-500 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-600 transition-all">SAYA SUDAH BAYAR</button>
-            <p class="text-[10px] text-slate-400 mt-4 uppercase tracking-widest">Otomatis Terverifikasi via ProPOS Gateway</p>
-        </div>
-    </div>
-
     <div id="scanner-ui" class="hidden fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center">
         <div class="w-64 h-64 border-4 border-indigo-500 rounded-3xl overflow-hidden relative">
             <video id="scan-v" class="w-full h-full object-cover"></video>
-            <div class="absolute inset-0 border-t-2 border-red-500 animate-bounce"></div>
         </div>
         <button onclick="stopScan()" class="mt-8 bg-white text-black px-10 py-3 rounded-full font-bold">BATAL</button>
     </div>
 
     <script>
-        // --- DATA & STATE ---
-        let db_items = JSON.parse(localStorage.getItem('v32_items')) || [];
-        let config = JSON.parse(localStorage.getItem('v32_cfg')) || { 
-            name: "Nama Toko Anda", 
-            qris_id: "081234567890", 
-            header_img: "" 
-        };
-        let cart = [];
-        let scannerReader = null;
+        // --- DATA STATE ---
+        let db_items = JSON.parse(localStorage.getItem('v33_items')) || [];
+        let config = JSON.parse(localStorage.getItem('v33_cfg')) || { name: "Toko Saya", qris_id: "08123" };
+        let currentEditIdx = null;
 
         const fmtRp = (n) => "Rp " + new Intl.NumberFormat('id-ID').format(n);
 
         function switchMenu(m) {
             document.querySelectorAll('.sidebar-item').forEach(e => e.classList.remove('active'));
             document.getElementById('nav-'+m).classList.add('active');
-            document.getElementById('menu-title').innerText = m.toUpperCase();
+            document.getElementById('menu-title').innerText = m;
             const v = document.getElementById('main-view');
 
-            if(m === 'transaksi') renderTransaksi(v);
             if(m === 'referensi') renderReferensi(v);
-            if(m === 'setting') renderSetting(v);
-            if(m === 'barang') renderBarang(v);
-            if(m === 'dashboard') v.innerHTML = `<div class="card-glass p-20 text-center"><i data-lucide="store" class="w-20 h-20 mx-auto mb-4 text-indigo-500"></i><h2 class="text-3xl font-bold">Selamat Datang di ${config.name}</h2></div>`;
+            if(m === 'transaksi') v.innerHTML = `<div class="card-glass p-10 text-center">Menu Transaksi Ready.</div>`;
+            if(m === 'dashboard') v.innerHTML = `<div class="card-glass p-20 text-center"><h2 class="text-3xl font-bold">Selamat Datang di ${config.name}</h2></div>`;
             lucide.createIcons();
         }
 
-        // --- REFERENSI ---
+        // --- MENU REFERENSI (LOGIKA UTAMA) ---
         function renderReferensi(v) {
             v.innerHTML = `
-                <div class="card-glass p-6 mb-8">
-                    <h3 class="font-bold mb-4 text-indigo-400">Database Produk</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="flex gap-2">
-                            <input id="ref-barcode" class="input-field" placeholder="Barcode">
-                            <button onclick="startScan('ref-barcode')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera"></i></button>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="card-glass p-6 h-fit sticky top-0">
+                        <h3 id="form-title" class="font-bold mb-6 text-indigo-400">Tambah Produk Baru</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs text-slate-500 mb-1 block">BARCODE</label>
+                                <div class="flex gap-2">
+                                    <input id="ref-barcode" class="input-field" placeholder="Scan atau Ketik...">
+                                    <button onclick="startScan('ref-barcode')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera" class="w-5 h-5"></i></button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500 mb-1 block">NAMA PRODUK</label>
+                                <input id="ref-nama" class="input-field" placeholder="Contoh: Kopi Susu Gula Aren">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500 mb-1 block">HARGA JUAL (Rp)</label>
+                                <input id="ref-harga" type="number" class="input-field" placeholder="0">
+                            </div>
+                            <div class="flex gap-2 pt-4">
+                                <button id="btn-save" onclick="saveProduct()" class="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-xl font-bold transition-all">SIMPAN DATA</button>
+                                <button id="btn-cancel" onclick="resetForm()" class="hidden bg-slate-700 hover:bg-slate-600 px-4 rounded-xl transition-all"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
+                            </div>
                         </div>
-                        <input id="ref-nama" class="input-field" placeholder="Nama Barang">
-                        <input id="ref-harga" type="number" class="input-field" placeholder="Harga Jual">
-                        <button onclick="saveRef()" class="bg-green-600 font-bold rounded-lg px-6">SIMPAN</button>
+                    </div>
+
+                    <div class="lg:col-span-2 card-glass p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold">Daftar Produk (${db_items.length})</h3>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-slate-500"></i>
+                                <input oninput="loadTable(this.value)" class="input-field pl-10 py-2 w-64" placeholder="Cari nama/barcode...">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-separate border-spacing-y-2">
+                                <thead class="text-slate-500 text-xs uppercase">
+                                    <tr>
+                                        <th class="pb-4 pl-4">Produk</th>
+                                        <th class="pb-4">Harga</th>
+                                        <th class="pb-4 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-                <div class="card-glass p-6 overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead><tr class="text-slate-500 border-b border-slate-800"><th class="p-4">Barcode</th><th class="p-4">Nama</th><th class="p-4">Harga</th><th class="p-4">Aksi</th></tr></thead>
-                        <tbody id="list-ref"></tbody>
-                    </table>
-                </div>
             `;
-            loadRefTable();
+            loadTable();
         }
 
-        function saveRef() {
-            const barcode = document.getElementById('ref-barcode').value;
-            const nama = document.getElementById('ref-nama').value;
-            const jual = parseInt(document.getElementById('ref-harga').value);
-            if(!barcode || !nama || !jual) return alert("Lengkapi data!");
-            
-            db_items.push({ barcode, nama, jual, awal:0, tambah:0, rusak:0, hilang:0, terjual:0 });
-            localStorage.setItem('v32_items', JSON.stringify(db_items));
-            loadRefTable();
-        }
+        function loadTable(filter = "") {
+            const tbody = document.getElementById('table-body');
+            const filtered = db_items.filter(i => 
+                i.nama.toLowerCase().includes(filter.toLowerCase()) || 
+                i.barcode.includes(filter)
+            );
 
-        function loadRefTable() {
-            document.getElementById('list-ref').innerHTML = db_items.map((i, idx) => `
-                <tr class="border-b border-slate-800">
-                    <td class="p-4 font-mono text-xs">${i.barcode}</td>
-                    <td class="p-4">${i.nama}</td>
-                    <td class="p-4">${fmtRp(i.jual)}</td>
-                    <td class="p-4"><button onclick="db_items.splice(${idx},1);loadRefTable()" class="text-red-500"><i data-lucide="trash"></i></button></td>
+            tbody.innerHTML = filtered.map((item, idx) => `
+                <tr class="bg-slate-800/30 hover:bg-slate-800/60 transition-all group">
+                    <td class="p-4 rounded-l-xl">
+                        <div class="font-bold text-white">${item.nama}</div>
+                        <div class="text-[10px] font-mono text-slate-500 tracking-wider">${item.barcode}</div>
+                    </td>
+                    <td class="p-4 font-bold text-indigo-400">${fmtRp(item.jual)}</td>
+                    <td class="p-4 rounded-r-xl text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="editProduct(${idx})" class="btn-icon btn-edit" title="Edit"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                            <button onclick="deleteProduct(${idx})" class="btn-icon btn-delete" title="Hapus"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
                 </tr>
             `).join('');
+            if(filtered.length === 0) tbody.innerHTML = `<tr><td colspan="3" class="text-center p-10 text-slate-500">Data tidak ditemukan</td></tr>`;
             lucide.createIcons();
         }
 
-        // --- TRANSAKSI ---
-        function renderTransaksi(v) {
-            cart = [];
-            v.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div class="card-glass p-6">
-                        <div class="flex gap-2 mb-6">
-                            <input id="t-scan" class="input-field" placeholder="Scan Barang...">
-                            <button onclick="startScan('t-scan')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera"></i></button>
-                        </div>
-                        <div id="cart-list" class="space-y-3 min-h-[300px]"></div>
-                        <div class="mt-6 pt-6 border-t border-slate-700">
-                            <h2 id="t-grand" class="text-4xl font-black text-indigo-400">Rp 0</h2>
-                        </div>
-                    </div>
-                    <div class="card-glass p-6 space-y-4">
-                        <h3 class="font-bold">Pembayaran</h3>
-                        <select id="pay-method" class="input-field" onchange="updatePayUI()">
-                            <option value="cash">TUNAI (CASH)</option>
-                            <option value="qris">QRIS (OTOMATIS)</option>
-                            <option value="split">CAMPURAN (CASH + QRIS)</option>
-                        </select>
-                        <div id="ui-cash" class="space-y-2">
-                            <input id="p-cash" type="number" oninput="calcFinal()" class="input-field text-2xl" placeholder="Masukan Uang Cash">
-                        </div>
-                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
-                            <span class="text-slate-400">KEMBALIAN:</span>
-                            <span id="p-change" class="text-2xl font-black text-green-400">Rp 0</span>
-                        </div>
-                        <button onclick="prosesBayar()" class="w-full bg-indigo-600 py-6 rounded-2xl font-black text-xl shadow-xl">PROSES PEMBAYARAN</button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('t-scan').addEventListener('change', (e) => {
-                const item = db_items.find(i => i.barcode === e.target.value);
-                if(item) {
-                    const inCart = cart.find(c => c.barcode === item.barcode);
-                    if(inCart) inCart.qty++; else cart.push({...item, qty:1});
-                    updateCartUI();
-                }
-                e.target.value = "";
-            });
-        }
+        function saveProduct() {
+            const barcode = document.getElementById('ref-barcode').value.trim();
+            const nama = document.getElementById('ref-nama').value.trim();
+            const jual = parseInt(document.getElementById('ref-harga').value);
 
-        function updateCartUI() {
-            let total = 0;
-            document.getElementById('cart-list').innerHTML = cart.map((c, idx) => {
-                total += (c.jual * c.qty);
-                return `<div class="flex justify-between p-3 bg-slate-800/50 rounded-lg"><div><b>${c.nama}</b><br><small>${fmtRp(c.jual)} x ${c.qty}</small></div><button onclick="cart.splice(${idx},1);updateCartUI()" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
-            }).join('');
-            window.lastTotal = total;
-            document.getElementById('t-grand').innerText = fmtRp(total);
-            calcFinal();
-            lucide.createIcons();
-        }
+            if(!barcode || !nama || isNaN(jual)) return alert("Mohon lengkapi semua kolom!");
 
-        function updatePayUI() { calcFinal(); }
-
-        function calcFinal() {
-            const total = window.lastTotal || 0;
-            const method = document.getElementById('pay-method').value;
-            const cash = parseInt(document.getElementById('p-cash').value) || 0;
-            let change = cash - total;
-            document.getElementById('p-change').innerText = fmtRp(change > 0 ? change : 0);
-        }
-
-        // --- QRIS INTEGRATION ---
-        function prosesBayar() {
-            if(cart.length === 0) return alert("Keranjang masih kosong!");
-            const method = document.getElementById('pay-method').value;
-            const total = window.lastTotal;
-
-            if(method === 'qris' || method === 'split') {
-                let nominalQris = total;
-                if(method === 'split') {
-                    const cash = parseInt(document.getElementById('p-cash').value) || 0;
-                    nominalQris = total - cash;
-                }
-                
-                if(nominalQris <= 0) return finishTrx();
-
-                // Munculkan QRIS
-                document.getElementById('qris-modal').classList.remove('hidden');
-                document.getElementById('qris-amount').innerText = fmtRp(nominalQris);
-                // Generator API (Menggunakan Image-Charts untuk QRIS dinamis)
-                const qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=qris://${config.qris_id}/${nominalQris}`;
-                document.getElementById('qris-image').src = qrisUrl;
-                
-                speak(`Silakan scan QRIS sebesar ${nominalQris} rupiah`);
+            if(currentEditIdx !== null) {
+                // Proses Update
+                db_items[currentEditIdx] = { ...db_items[currentEditIdx], barcode, nama, jual };
+                alert("Produk berhasil diperbarui!");
             } else {
-                finishTrx();
+                // Cek duplikat barcode
+                if(db_items.find(i => i.barcode === barcode)) return alert("Barcode sudah terdaftar!");
+                // Proses Simpan Baru
+                db_items.push({ barcode, nama, jual, terjual: 0 });
+                alert("Produk berhasil disimpan!");
+            }
+
+            localStorage.setItem('v33_items', JSON.stringify(db_items));
+            resetForm();
+            loadTable();
+        }
+
+        function editProduct(idx) {
+            currentEditIdx = idx;
+            const item = db_items[idx];
+            
+            document.getElementById('form-title').innerText = "Edit Produk";
+            document.getElementById('ref-barcode').value = item.barcode;
+            document.getElementById('ref-nama').value = item.nama;
+            document.getElementById('ref-harga').value = item.jual;
+            
+            document.getElementById('btn-save').innerText = "UPDATE DATA";
+            document.getElementById('btn-cancel').classList.remove('hidden');
+            document.getElementById('form-title').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function deleteProduct(idx) {
+            if(confirm(`Hapus produk "${db_items[idx].nama}"?`)) {
+                db_items.splice(idx, 1);
+                localStorage.setItem('v33_items', JSON.stringify(db_items));
+                loadTable();
             }
         }
 
-        function confirmPayment() {
-            speak("Pembayaran Berhasil. Saldo Masuk.");
-            closeQris();
-            setTimeout(finishTrx, 500);
+        function resetForm() {
+            currentEditIdx = null;
+            document.getElementById('form-title').innerText = "Tambah Produk Baru";
+            document.getElementById('ref-barcode').value = "";
+            document.getElementById('ref-nama').value = "";
+            document.getElementById('ref-harga').value = "";
+            document.getElementById('btn-save').innerText = "SIMPAN DATA";
+            document.getElementById('btn-cancel').classList.add('hidden');
         }
 
-        function finishTrx() {
-            alert("Transaksi Berhasil!");
-            generateNota();
-            switchMenu('transaksi');
-        }
-
-        function closeQris() { document.getElementById('qris-modal').classList.add('hidden'); }
-
-        function speak(t) {
-            const m = new SpeechSynthesisUtterance(t);
-            m.lang = 'id-ID';
-            window.speechSynthesis.speak(m);
-        }
-
-        // --- PDF GENERATOR ---
-        function generateNota() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
-            doc.setFontSize(14); doc.text(config.name, 40, 10, {align: 'center'});
-            doc.setFontSize(8); doc.text(new Date().toLocaleString(), 40, 15, {align: 'center'});
-            doc.text("------------------------------------------", 40, 18, {align: 'center'});
-            let y = 25;
-            cart.forEach(i => {
-                doc.text(`${i.nama}`, 5, y);
-                doc.text(`${i.qty} x ${i.jual}`, 5, y+4);
-                doc.text(`${fmtRp(i.qty*i.jual)}`, 75, y+4, {align: 'right'});
-                y += 10;
-            });
-            doc.text("------------------------------------------", 40, y, {align: 'center'});
-            doc.setFontSize(12); doc.text("TOTAL: " + fmtRp(window.lastTotal), 75, y+8, {align: 'right'});
-            doc.save(`Nota-${Date.now()}.pdf`);
-        }
-
-        // --- SETTING ---
-        function renderSetting(v) {
-            v.innerHTML = `
-                <div class="card-glass p-8 max-w-lg mx-auto space-y-6">
-                    <h2 class="text-2xl font-bold">Pengaturan Toko & QRIS</h2>
-                    <div>
-                        <label class="text-xs text-slate-400">NAMA TOKO</label>
-                        <input id="set-name" class="input-field" value="${config.name}">
-                    </div>
-                    <div>
-                        <label class="text-xs text-slate-400">NOMOR HP QRIS (GOPAY/DANA/OVO)</label>
-                        <input id="set-qris" class="input-field" value="${config.qris_id}" placeholder="Contoh: 08123456789">
-                        <p class="text-[10px] text-indigo-400 mt-2">*Nomor ini akan digunakan sebagai identitas tujuan transfer QRIS</p>
-                    </div>
-                    <button onclick="saveSet()" class="w-full bg-indigo-600 py-4 rounded-xl font-bold">SIMPAN PERUBAHAN</button>
-                </div>
-            `;
-        }
-
-        function saveSet() {
-            config.name = document.getElementById('set-name').value;
-            config.qris_id = document.getElementById('set-qris').value;
-            localStorage.setItem('v32_cfg', JSON.stringify(config));
-            alert("Setting Berhasil Disimpan!");
-            location.reload();
-        }
-
-        // --- UTILS ---
+        // --- SCANNER UTILS ---
+        let scannerReader = null;
         function startScan(tid) {
             document.getElementById('scanner-ui').classList.remove('hidden');
             if(!scannerReader) scannerReader = new ZXing.BrowserMultiFormatReader();
             scannerReader.decodeFromVideoDevice(null, 'scan-v', (res) => {
-                if(res) { document.getElementById(tid).value = res.text; stopScan(); }
+                if(res) { 
+                    document.getElementById(tid).value = res.text; 
+                    stopScan(); 
+                    // Jika di menu edit, bantu trigger cari nama otomatis jika diinginkan
+                }
             });
         }
         function stopScan() { if(scannerReader) scannerReader.reset(); document.getElementById('scanner-ui').classList.add('hidden'); }
 
         window.onload = () => {
-            switchMenu('dashboard');
+            switchMenu('referensi');
             setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleString('id-ID'); }, 1000);
         };
     </script>
 </body>
-    </html>
-    
+</html>
