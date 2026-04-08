@@ -1,79 +1,77 @@
-<!doctype html>
-<html lang="id" class="h-full">
+<!DOCTYPE html>
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory POS Manager</title>
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <title>POS Inventory Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f1f5f9; }
-        .card-glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
-        .nav-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border-radius: 8px; transition: 0.3s; }
-        .nav-btn:hover { background: rgba(255,255,255,0.1); }
-        .active-nav { background: #6366f1; color: white; }
+        body { background-color: #0f172a; color: #f1f5f9; font-family: sans-serif; }
+        .card { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; }
     </style>
 </head>
-<body class="h-full">
-    <div class="flex h-screen overflow-hidden">
-        <aside class="w-64 bg-slate-900 border-r border-slate-800 p-4 hidden md:block">
-            <h1 class="text-xl font-bold mb-8 text-indigo-400">POS Inventory</h1>
-            <nav class="space-y-2">
-                <button onclick="navigate('dashboard')" id="nav-dashboard" class="nav-btn active-nav">Dashboard</button>
-                <button onclick="navigate('barang')" id="nav-barang" class="nav-btn">Kelola Barang</button>
-                <button onclick="navigate('transaksi')" id="nav-transaksi" class="nav-btn">Transaksi</button>
-            </nav>
-        </aside>
+<body class="min-h-screen flex flex-col">
 
-        <main class="flex-1 flex flex-col overflow-hidden">
-            <header class="h-16 border-b border-slate-800 flex items-center px-6 bg-slate-900/50">
-                <h2 id="page-title" class="font-semibold text-lg">Dashboard</h2>
-            </header>
-            <div id="content" class="p-6 overflow-y-auto">
-                </div>
-        </main>
-    </div>
+    <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold text-indigo-400 flex items-center gap-2">
+                <i data-lucide="store"></i> POS SAYA
+            </h1>
+            <div id="jam" class="text-xs font-mono text-slate-500"></div>
+        </div>
+    </header>
+
+    <main class="flex-1 p-4 max-w-4xl mx-auto w-full space-y-4">
+        
+        <div class="grid grid-cols-2 gap-3">
+            <div class="card p-4">
+                <p class="text-slate-400 text-xs">Total Barang</p>
+                <p class="text-xl font-bold">120</p>
+            </div>
+            <div class="card p-4">
+                <p class="text-slate-400 text-xs">Penjualan Hari Ini</p>
+                <p class="text-xl font-bold text-green-400">Rp 0</p>
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            <button onclick="alert('Fitur Scanner akan terbuka!')" class="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95">
+                <i data-lucide="scan-barcode"></i> SCAN BARCODE
+            </button>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="alert('Buka Data Barang')" class="card p-4 flex flex-col items-center gap-2 active:bg-slate-700">
+                    <i data-lucide="package" class="text-indigo-400"></i>
+                    <span class="text-sm">Data Barang</span>
+                </button>
+                <button onclick="alert('Buka Laporan')" class="card p-4 flex flex-col items-center gap-2 active:bg-slate-700">
+                    <i data-lucide="clipboard-list" class="text-indigo-400"></i>
+                    <span class="text-sm">Laporan</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <h3 class="font-semibold mb-3 border-b border-slate-700 pb-2">Transaksi Terakhir</h3>
+            <p class="text-center text-slate-500 text-sm py-4 italic">Belum ada transaksi hari ini.</p>
+        </div>
+
+    </main>
+
+    <footer class="p-4 text-center text-slate-600 text-[10px]">
+        &copy; 2026 POS Inventory System
+    </footer>
 
     <script>
-        function navigate(page) {
-            const content = document.getElementById('content');
-            const title = document.getElementById('page-title');
-            
-            // Reset active class
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active-nav'));
-            document.getElementById('nav-' + page).classList.add('active-nav');
-            
-            title.innerText = page.charAt(0).toUpperCase() + page.slice(1);
+        // Mengaktifkan Ikon Lucide
+        lucide.createIcons();
 
-            if(page === 'dashboard') {
-                content.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="card-glass p-6">
-                            <p class="text-slate-400 text-sm">Total Barang</p>
-                            <h3 class="text-2xl font-bold">128</h3>
-                        </div>
-                        <div class="card-glass p-6">
-                            <p class="text-slate-400 text-sm">Transaksi Hari Ini</p>
-                            <h3 class="text-2xl font-bold">15</h3>
-                        </div>
-                    </div>
-                `;
-            } else if(page === 'barang') {
-                content.innerHTML = `
-                    <div class="card-glass p-6">
-                        <button class="bg-indigo-600 px-4 py-2 rounded-lg mb-4 text-sm font-bold"> + Tambah Barang</button>
-                        <p class="text-slate-400 italic">Daftar barang akan muncul di sini.</p>
-                    </div>
-                `;
-            } else {
-                content.innerHTML = `<div class="card-glass p-6 text-center">Fitur Transaksi & Scanner Siap Digunakan.</div>`;
-            }
-        }
-
-        // Jalankan dashboard pertama kali
-        window.onload = () => navigate('dashboard');
+        // Update Jam Real-time
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('jam').textContent = now.toLocaleTimeString('id-ID');
+        }, 1000);
     </script>
 </body>
 </html>
