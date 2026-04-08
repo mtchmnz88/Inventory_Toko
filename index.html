@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProPOS v3.3 - Dynamic Master Data</title>
+    <title>ProPOS v3.5 - Enterprise System</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
@@ -14,201 +14,314 @@
         .input-field { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: white; width: 100%; }
         .sidebar-item { transition: 0.3s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #94a3b8; }
         .sidebar-item.active { background: #6366f1; color: white; }
-        .btn-icon { padding: 8px; border-radius: 8px; transition: 0.2s; }
-        .btn-edit { color: #fbbf24; background: rgba(251, 191, 36, 0.1); }
-        .btn-delete { color: #f87171; background: rgba(248, 113, 113, 0.1); }
-        .btn-edit:hover { background: #fbbf24; color: black; }
-        .btn-delete:hover { background: #f87171; color: white; }
+        .status-badge { padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; }
+        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body class="h-full flex">
 
-    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-8">
+    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-6 no-print">
         <div class="flex items-center gap-3 px-2">
             <div class="bg-indigo-500 p-2 rounded-lg"><i data-lucide="zap" class="text-white"></i></div>
             <h1 class="font-extrabold text-xl tracking-tighter">PRO<span class="text-indigo-500">POS</span></h1>
         </div>
-        <nav class="flex flex-col gap-2">
+        <nav class="flex flex-col gap-1">
             <div onclick="switchMenu('dashboard')" id="nav-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard"></i> Dashboard</div>
+            <div onclick="switchMenu('barang')" id="nav-barang" class="sidebar-item"><i data-lucide="package"></i> Kelola Barang</div>
             <div onclick="switchMenu('transaksi')" id="nav-transaksi" class="sidebar-item"><i data-lucide="shopping-cart"></i> Transaksi</div>
-            <div onclick="switchMenu('referensi')" id="nav-referensi" class="sidebar-item"><i data-lucide="book-open"></i> Referensi</div>
+            <div onclick="switchMenu('report')" id="nav-report" class="sidebar-item"><i data-lucide="bar-chart-3"></i> Report Penjualan</div>
             <div onclick="switchMenu('setting')" id="nav-setting" class="sidebar-item"><i data-lucide="settings"></i> Setting</div>
         </nav>
     </aside>
 
     <main class="flex-1 flex flex-col overflow-hidden">
-        <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50">
-            <h2 id="menu-title" class="text-xl font-bold uppercase tracking-widest text-indigo-400">Dashboard</h2>
+        <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50 no-print">
+            <h2 id="menu-title" class="text-xl font-bold uppercase text-indigo-400">Dashboard</h2>
             <div id="clock" class="text-sm font-mono text-slate-500"></div>
         </header>
         <div id="main-view" class="flex-1 overflow-y-auto p-8"></div>
     </main>
 
-    <div id="scanner-ui" class="hidden fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center">
+    <div id="scanner-ui" class="hidden fixed inset-0 bg-black/95 z-[9999] flex flex-col items-center justify-center">
         <div class="w-64 h-64 border-4 border-indigo-500 rounded-3xl overflow-hidden relative">
             <video id="scan-v" class="w-full h-full object-cover"></video>
         </div>
-        <button onclick="stopScan()" class="mt-8 bg-white text-black px-10 py-3 rounded-full font-bold">BATAL</button>
+        <button onclick="stopScan()" class="mt-8 bg-red-500 text-white px-10 py-3 rounded-full font-bold">BATAL</button>
     </div>
 
     <script>
-        // --- DATA STATE ---
-        let db_items = JSON.parse(localStorage.getItem('v33_items')) || [];
-        let config = JSON.parse(localStorage.getItem('v33_cfg')) || { name: "Toko Saya", qris_id: "08123" };
-        let currentEditIdx = null;
+        // --- DATA ENGINE ---
+        let db_items = JSON.parse(localStorage.getItem('propos_v35_items')) || [];
+        let db_sales = JSON.parse(localStorage.getItem('propos_v35_sales')) || [];
+        let config = JSON.parse(localStorage.getItem('propos_v35_cfg')) || { name: "Toko Saya", qris: "08123" };
+        let cart = [];
 
         const fmtRp = (n) => "Rp " + new Intl.NumberFormat('id-ID').format(n);
 
         function switchMenu(m) {
             document.querySelectorAll('.sidebar-item').forEach(e => e.classList.remove('active'));
             document.getElementById('nav-'+m).classList.add('active');
-            document.getElementById('menu-title').innerText = m;
+            document.getElementById('menu-title').innerText = m.replace('report', 'Report Penjualan');
             const v = document.getElementById('main-view');
 
-            if(m === 'referensi') renderReferensi(v);
-            if(m === 'transaksi') v.innerHTML = `<div class="card-glass p-10 text-center">Menu Transaksi Ready.</div>`;
-            if(m === 'dashboard') v.innerHTML = `<div class="card-glass p-20 text-center"><h2 class="text-3xl font-bold">Selamat Datang di ${config.name}</h2></div>`;
+            if(m === 'dashboard') renderDashboard(v);
+            if(m === 'barang') renderKelolaBarang(v);
+            if(m === 'transaksi') renderTransaksi(v);
+            if(m === 'report') renderReport(v);
+            if(m === 'setting') renderSetting(v);
             lucide.createIcons();
         }
 
-        // --- MENU REFERENSI (LOGIKA UTAMA) ---
-        function renderReferensi(v) {
+        // --- MENU: DASHBOARD ---
+        function renderDashboard(v) {
+            const lowStock = db_items.filter(i => calculateSisa(i) < 10).length;
             v.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="card-glass p-6 h-fit sticky top-0">
-                        <h3 id="form-title" class="font-bold mb-6 text-indigo-400">Tambah Produk Baru</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-xs text-slate-500 mb-1 block">BARCODE</label>
-                                <div class="flex gap-2">
-                                    <input id="ref-barcode" class="input-field" placeholder="Scan atau Ketik...">
-                                    <button onclick="startScan('ref-barcode')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera" class="w-5 h-5"></i></button>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-500 mb-1 block">NAMA PRODUK</label>
-                                <input id="ref-nama" class="input-field" placeholder="Contoh: Kopi Susu Gula Aren">
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-500 mb-1 block">HARGA JUAL (Rp)</label>
-                                <input id="ref-harga" type="number" class="input-field" placeholder="0">
-                            </div>
-                            <div class="flex gap-2 pt-4">
-                                <button id="btn-save" onclick="saveProduct()" class="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-xl font-bold transition-all">SIMPAN DATA</button>
-                                <button id="btn-cancel" onclick="resetForm()" class="hidden bg-slate-700 hover:bg-slate-600 px-4 rounded-xl transition-all"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button>
-                            </div>
-                        </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card-glass p-6 border-l-4 border-indigo-500">
+                        <p class="text-slate-400 text-sm">Total Produk</p>
+                        <h3 class="text-3xl font-black">${db_items.length}</h3>
                     </div>
-
-                    <div class="lg:col-span-2 card-glass p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold">Daftar Produk (${db_items.length})</h3>
-                            <div class="relative">
-                                <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-slate-500"></i>
-                                <input oninput="loadTable(this.value)" class="input-field pl-10 py-2 w-64" placeholder="Cari nama/barcode...">
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-separate border-spacing-y-2">
-                                <thead class="text-slate-500 text-xs uppercase">
-                                    <tr>
-                                        <th class="pb-4 pl-4">Produk</th>
-                                        <th class="pb-4">Harga</th>
-                                        <th class="pb-4 text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="table-body"></tbody>
-                            </table>
-                        </div>
+                    <div class="card-glass p-6 border-l-4 border-red-500">
+                        <p class="text-slate-400 text-sm">Stok Hampir Habis</p>
+                        <h3 class="text-3xl font-black">${lowStock}</h3>
+                    </div>
+                    <div class="card-glass p-6 border-l-4 border-green-500">
+                        <p class="text-slate-400 text-sm">Transaksi Hari Ini</p>
+                        <h3 class="text-3xl font-black">${db_sales.filter(s => s.date === new Date().toLocaleDateString()).length}</h3>
                     </div>
                 </div>
             `;
-            loadTable();
         }
 
-        function loadTable(filter = "") {
-            const tbody = document.getElementById('table-body');
-            const filtered = db_items.filter(i => 
-                i.nama.toLowerCase().includes(filter.toLowerCase()) || 
-                i.barcode.includes(filter)
-            );
-
-            tbody.innerHTML = filtered.map((item, idx) => `
-                <tr class="bg-slate-800/30 hover:bg-slate-800/60 transition-all group">
-                    <td class="p-4 rounded-l-xl">
-                        <div class="font-bold text-white">${item.nama}</div>
-                        <div class="text-[10px] font-mono text-slate-500 tracking-wider">${item.barcode}</div>
-                    </td>
-                    <td class="p-4 font-bold text-indigo-400">${fmtRp(item.jual)}</td>
-                    <td class="p-4 rounded-r-xl text-center">
-                        <div class="flex justify-center gap-2">
-                            <button onclick="editProduct(${idx})" class="btn-icon btn-edit" title="Edit"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                            <button onclick="deleteProduct(${idx})" class="btn-icon btn-delete" title="Hapus"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        // --- MENU: KELOLA BARANG ---
+        function renderKelolaBarang(v) {
+            v.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div class="card-glass p-6 h-fit space-y-4">
+                        <h3 class="font-bold text-indigo-400">Input/Update Stok</h3>
+                        <div class="flex gap-2">
+                            <input id="k-barcode" class="input-field" placeholder="Barcode">
+                            <button onclick="startScan('k-barcode')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera"></i></button>
                         </div>
+                        <input id="k-nama" class="input-field" placeholder="Nama Produk">
+                        <select id="k-tipe" class="input-field">
+                            <option value="awal">Stok Awal</option>
+                            <option value="tambah">Stok Tambah</option>
+                            <option value="rusak">Stok Rusak</option>
+                            <option value="hilang">Stok Hilang</option>
+                            <option value="retur">Stok Retur</option>
+                        </select>
+                        <input id="k-qty" type="number" class="input-field" placeholder="Jumlah (Qty)">
+                        <input id="k-beli" type="number" class="input-field" placeholder="Harga Beli">
+                        <input id="k-jual" type="number" class="input-field" placeholder="Harga Jual">
+                        <button onclick="saveItem()" class="w-full bg-green-600 py-3 rounded-xl font-bold">SIMPAN BARANG</button>
+                    </div>
+                    <div class="lg:col-span-3 card-glass p-6">
+                        <table class="w-full text-left text-sm">
+                            <thead class="text-slate-500 border-b border-slate-800">
+                                <tr><th class="p-2">PRODUK</th><th class="p-2">BELI/JUAL</th><th class="p-2">SISA STOK</th><th class="p-2">STATUS</th><th class="p-2">AKSI</th></tr>
+                            </thead>
+                            <tbody id="k-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            loadItemTable();
+        }
+
+        function calculateSisa(i) {
+            return (parseInt(i.awal) + parseInt(i.tambah) + parseInt(i.retur)) - (parseInt(i.rusak) + parseInt(i.hilang) + parseInt(i.terjual));
+        }
+
+        function saveItem() {
+            const barcode = document.getElementById('k-barcode').value;
+            const nama = document.getElementById('k-nama').value;
+            const tipe = document.getElementById('k-tipe').value;
+            const qty = parseInt(document.getElementById('k-qty').value) || 0;
+            const beli = parseInt(document.getElementById('k-beli').value) || 0;
+            const jual = parseInt(document.getElementById('k-jual').value) || 0;
+
+            if(!barcode || !nama) return alert("Barcode dan Nama wajib diisi!");
+
+            let item = db_items.find(i => i.barcode === barcode);
+            if(item) {
+                // Update Logika: Jika nama sama tapi barcode berbeda dihandle di tingkat pencarian, 
+                // di sini kita asumsikan barcode adalah kunci unik.
+                item.nama = nama;
+                item.beli = beli;
+                item.jual = jual;
+                item[tipe] = (tipe === 'awal') ? qty : parseInt(item[tipe]) + qty;
+            } else {
+                item = { barcode, nama, beli, jual, awal:0, tambah:0, rusak:0, hilang:0, retur:0, terjual:0 };
+                item[tipe] = qty;
+                db_items.push(item);
+            }
+            
+            localStorage.setItem('propos_v35_items', JSON.stringify(db_items));
+            renderKelolaBarang(document.getElementById('main-view'));
+        }
+
+        function loadItemTable() {
+            const body = document.getElementById('k-body');
+            body.innerHTML = db_items.map((i, idx) => {
+                const sisa = calculateSisa(i);
+                let status = '<span class="status-badge bg-green-500/20 text-green-500">READY</span>';
+                if(sisa <= 0) status = '<span class="status-badge bg-red-500/20 text-red-500">HABIS</span>';
+                else if(sisa < 10) status = '<span class="status-badge bg-yellow-500/20 text-yellow-500">LIMIT</span>';
+
+                return `<tr class="border-b border-slate-800">
+                    <td class="p-2"><b>${i.nama}</b><br><small class="text-slate-500">${i.barcode}</small></td>
+                    <td class="p-2">${fmtRp(i.beli)} / ${fmtRp(i.jual)}</td>
+                    <td class="p-2 font-bold">${sisa}</td>
+                    <td class="p-2">${status}</td>
+                    <td class="p-2 flex gap-2">
+                        <button onclick="deleteItem(${idx})" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </td>
-                </tr>
-            `).join('');
-            if(filtered.length === 0) tbody.innerHTML = `<tr><td colspan="3" class="text-center p-10 text-slate-500">Data tidak ditemukan</td></tr>`;
+                </tr>`;
+            }).join('');
             lucide.createIcons();
         }
 
-        function saveProduct() {
-            const barcode = document.getElementById('ref-barcode').value.trim();
-            const nama = document.getElementById('ref-nama').value.trim();
-            const jual = parseInt(document.getElementById('ref-harga').value);
-
-            if(!barcode || !nama || isNaN(jual)) return alert("Mohon lengkapi semua kolom!");
-
-            if(currentEditIdx !== null) {
-                // Proses Update
-                db_items[currentEditIdx] = { ...db_items[currentEditIdx], barcode, nama, jual };
-                alert("Produk berhasil diperbarui!");
-            } else {
-                // Cek duplikat barcode
-                if(db_items.find(i => i.barcode === barcode)) return alert("Barcode sudah terdaftar!");
-                // Proses Simpan Baru
-                db_items.push({ barcode, nama, jual, terjual: 0 });
-                alert("Produk berhasil disimpan!");
-            }
-
-            localStorage.setItem('v33_items', JSON.stringify(db_items));
-            resetForm();
-            loadTable();
-        }
-
-        function editProduct(idx) {
-            currentEditIdx = idx;
-            const item = db_items[idx];
-            
-            document.getElementById('form-title').innerText = "Edit Produk";
-            document.getElementById('ref-barcode').value = item.barcode;
-            document.getElementById('ref-nama').value = item.nama;
-            document.getElementById('ref-harga').value = item.jual;
-            
-            document.getElementById('btn-save').innerText = "UPDATE DATA";
-            document.getElementById('btn-cancel').classList.remove('hidden');
-            document.getElementById('form-title').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function deleteProduct(idx) {
-            if(confirm(`Hapus produk "${db_items[idx].nama}"?`)) {
+        function deleteItem(idx) {
+            if(confirm("Hapus barang?")) {
                 db_items.splice(idx, 1);
-                localStorage.setItem('v33_items', JSON.stringify(db_items));
-                loadTable();
+                localStorage.setItem('propos_v35_items', JSON.stringify(db_items));
+                loadItemTable();
             }
         }
 
-        function resetForm() {
-            currentEditIdx = null;
-            document.getElementById('form-title').innerText = "Tambah Produk Baru";
-            document.getElementById('ref-barcode').value = "";
-            document.getElementById('ref-nama').value = "";
-            document.getElementById('ref-harga').value = "";
-            document.getElementById('btn-save').innerText = "SIMPAN DATA";
-            document.getElementById('btn-cancel').classList.add('hidden');
+        // --- MENU: TRANSAKSI ---
+        function renderTransaksi(v) {
+            cart = [];
+            v.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="card-glass p-6 space-y-4">
+                        <div class="flex gap-2">
+                            <input id="t-scan" class="input-field" placeholder="Scan Barang...">
+                            <button onclick="startScan('t-scan')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera"></i></button>
+                        </div>
+                        <div id="t-cart" class="min-h-[300px] space-y-2 text-sm text-slate-400">Keranjang kosong.</div>
+                        <div class="text-right border-t border-slate-700 pt-4">
+                            <p>TOTAL TAGIHAN</p>
+                            <h2 id="t-total" class="text-4xl font-black text-indigo-400">Rp 0</h2>
+                        </div>
+                    </div>
+                    <div class="card-glass p-6 space-y-4">
+                        <h3 class="font-bold">Pembayaran</h3>
+                        <input id="t-cash" type="number" class="input-field text-2xl" placeholder="Uang Tunai">
+                        <div class="bg-slate-900 p-4 rounded-xl flex justify-between">
+                            <span>Kembalian:</span>
+                            <span id="t-change" class="text-green-400 font-bold">Rp 0</span>
+                        </div>
+                        <button onclick="prosesBayar()" class="w-full bg-indigo-600 py-4 rounded-xl font-bold">SELESAIKAN TRANSAKSI</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('t-scan').addEventListener('change', (e) => handleScanTrx(e.target.value));
+            document.getElementById('t-cash').addEventListener('input', (e) => {
+                const change = (parseInt(e.target.value) || 0) - window.lastTotal;
+                document.getElementById('t-change').innerText = fmtRp(change > 0 ? change : 0);
+            });
         }
 
-        // --- SCANNER UTILS ---
+        function handleScanTrx(code) {
+            const item = db_items.find(i => i.barcode === code);
+            if(!item) return alert("Barang tidak ditemukan!");
+            if(calculateSisa(item) <= 0) return alert("Stok Habis!");
+
+            const inCart = cart.find(c => c.barcode === code);
+            if(inCart) inCart.qty++; else cart.push({...item, qty:1});
+            
+            updateCartUI();
+            document.getElementById('t-scan').value = "";
+        }
+
+        function updateCartUI() {
+            let total = 0;
+            document.getElementById('t-cart').innerHTML = cart.map((c, idx) => {
+                total += (c.jual * c.qty);
+                return `<div class="flex justify-between p-2 bg-slate-800 rounded-lg">
+                    <span>${c.nama} (${c.qty}x)</span>
+                    <span>${fmtRp(c.jual * c.qty)}</span>
+                </div>`;
+            }).join('');
+            window.lastTotal = total;
+            document.getElementById('t-total').innerText = fmtRp(total);
+        }
+
+        function prosesBayar() {
+            if(cart.length === 0) return;
+            
+            const sale = {
+                id: "TRX-" + Date.now(),
+                date: new Date().toLocaleDateString(),
+                month: new Date().getMonth() + 1,
+                year: new Date().getFullYear(),
+                items: [...cart],
+                total: window.lastTotal,
+                profit: cart.reduce((acc, c) => acc + ((c.jual - c.beli) * c.qty), 0)
+            };
+
+            // Kurangi Stok
+            cart.forEach(c => {
+                let item = db_items.find(i => i.barcode === c.barcode);
+                item.terjual += c.qty;
+            });
+
+            db_sales.push(sale);
+            localStorage.setItem('propos_v35_items', JSON.stringify(db_items));
+            localStorage.setItem('propos_v35_sales', JSON.stringify(db_sales));
+            
+            alert("Transaksi Berhasil!");
+            switchMenu('report');
+        }
+
+        // --- MENU: REPORT PENJUALAN ---
+        function renderReport(v) {
+            const totalOmzet = db_sales.reduce((acc, s) => acc + s.total, 0);
+            const totalProfit = db_sales.reduce((acc, s) => acc + s.profit, 0);
+
+            v.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-center">
+                    <div class="card-glass p-6"><p class="text-sm">Total Omzet</p><h2 class="text-3xl font-black text-indigo-400">${fmtRp(totalOmzet)}</h2></div>
+                    <div class="card-glass p-6"><p class="text-sm">Total Laba/Profit</p><h2 class="text-3xl font-black text-green-400">${fmtRp(totalProfit)}</h2></div>
+                </div>
+                <div class="card-glass p-6">
+                    <div class="flex justify-between mb-4">
+                        <h3 class="font-bold">Riwayat Struk Penjualan</h3>
+                        <button onclick="window.print()" class="bg-slate-700 px-4 py-2 rounded-lg text-xs">Cetak PDF/Print</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="text-slate-500 border-b border-slate-800">
+                                <tr><th>TGL</th><th>ID TRX</th><th>ITEM</th><th>TOTAL</th><th>LABA</th></tr>
+                            </thead>
+                            <tbody>
+                                ${db_sales.reverse().map(s => `
+                                    <tr class="border-b border-slate-800/50">
+                                        <td class="p-2">${s.date}</td>
+                                        <td class="p-2">${s.id}</td>
+                                        <td class="p-2">${s.items.length} Barang</td>
+                                        <td class="p-2">${fmtRp(s.total)}</td>
+                                        <td class="p-2 text-green-400">${fmtRp(s.profit)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- UTILS ---
+        function renderSetting(v) {
+            v.innerHTML = `<div class="card-glass p-8 max-w-md mx-auto space-y-4">
+                <h3 class="font-bold">Pengaturan Toko</h3>
+                <input id="s-name" class="input-field" value="${config.name}">
+                <button onclick="config.name=document.getElementById('s-name').value;localStorage.setItem('propos_v35_cfg', JSON.stringify(config));alert('Saved')" class="w-full bg-indigo-600 py-3 rounded-xl font-bold">SIMPAN</button>
+            </div>`;
+        }
+
         let scannerReader = null;
         function startScan(tid) {
             document.getElementById('scanner-ui').classList.remove('hidden');
@@ -216,17 +329,15 @@
             scannerReader.decodeFromVideoDevice(null, 'scan-v', (res) => {
                 if(res) { 
                     document.getElementById(tid).value = res.text; 
+                    if(tid === 't-scan') handleScanTrx(res.text);
                     stopScan(); 
-                    // Jika di menu edit, bantu trigger cari nama otomatis jika diinginkan
                 }
             });
         }
         function stopScan() { if(scannerReader) scannerReader.reset(); document.getElementById('scanner-ui').classList.add('hidden'); }
 
-        window.onload = () => {
-            switchMenu('referensi');
-            setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleString('id-ID'); }, 1000);
-        };
+        window.onload = () => { switchMenu('dashboard'); setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleString(); }, 1000); };
     </script>
 </body>
-</html>
+    </html>
+    
