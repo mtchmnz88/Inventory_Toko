@@ -3,34 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProPOS v3 - Full Integrated System</title>
+    <title>ProPOS v3.2 - QRIS Integrated</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f1f5f9; overflow: hidden; }
         .card-glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; }
         .input-field { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: white; width: 100%; }
         .sidebar-item { transition: 0.3s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #94a3b8; }
         .sidebar-item.active { background: #6366f1; color: white; }
-        .highlight { border: 2px solid #6366f1; background: rgba(99,102,241,0.1); }
-        @media print { .no-print { display: none; } }
+        .qris-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
     </style>
 </head>
 <body class="h-full flex">
 
     <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-8 no-print">
         <div class="flex items-center gap-3 px-2">
-            <div class="bg-indigo-500 p-2 rounded-lg"><i data-lucide="shield-check" class="text-white"></i></div>
-            <h1 class="font-extrabold text-xl">PRO<span class="text-indigo-500">POS</span> v3</h1>
+            <div class="bg-indigo-500 p-2 rounded-lg"><i data-lucide="zap" class="text-white"></i></div>
+            <h1 class="font-extrabold text-xl tracking-tighter">PRO<span class="text-indigo-500">POS</span></h1>
         </div>
         <nav class="flex flex-col gap-2">
             <div onclick="switchMenu('dashboard')" id="nav-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard"></i> Dashboard</div>
             <div onclick="switchMenu('barang')" id="nav-barang" class="sidebar-item"><i data-lucide="package"></i> Kelola Barang</div>
             <div onclick="switchMenu('transaksi')" id="nav-transaksi" class="sidebar-item"><i data-lucide="shopping-cart"></i> Transaksi</div>
-            <div onclick="switchMenu('referensi')" id="nav-referensi" class="sidebar-item"><i data-lucide="list"></i> Daftar Referensi</div>
-            <div onclick="switchMenu('report')" id="nav-report" class="sidebar-item"><i data-lucide="file-text"></i> Report</div>
+            <div onclick="switchMenu('referensi')" id="nav-referensi" class="sidebar-item"><i data-lucide="book-open"></i> Referensi</div>
             <div onclick="switchMenu('setting')" id="nav-setting" class="sidebar-item"><i data-lucide="settings"></i> Setting</div>
         </nav>
     </aside>
@@ -38,330 +37,284 @@
     <main class="flex-1 flex flex-col overflow-hidden">
         <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/50 no-print">
             <h2 id="menu-title" class="text-xl font-bold">Dashboard</h2>
-            <button onclick="location.reload()" class="text-red-500 flex items-center gap-2 bg-red-500/10 px-4 py-2 rounded-lg">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Reset
-            </button>
+            <div id="clock" class="text-sm font-mono text-slate-500"></div>
         </header>
-
         <div id="main-view" class="flex-1 overflow-y-auto p-8"></div>
     </main>
 
-    <div id="scanner-ui" class="hidden fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center">
-        <div class="w-64 h-48 border-2 border-indigo-500 relative overflow-hidden rounded-xl">
+    <div id="qris-modal" class="hidden qris-overlay">
+        <div class="bg-white p-8 rounded-3xl text-center max-w-sm w-full mx-4 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-black font-extrabold text-xl">SCAN QRIS</h3>
+                <button onclick="closeQris()" class="text-slate-400"><i data-lucide="x"></i></button>
+            </div>
+            <div id="qris-container" class="bg-slate-100 p-4 rounded-2xl mb-4 flex items-center justify-center">
+                <img id="qris-image" src="" alt="QRIS Code" class="w-full h-auto">
+            </div>
+            <div class="text-slate-500 text-sm mb-2">Total Tagihan:</div>
+            <div id="qris-amount" class="text-3xl font-black text-indigo-600 mb-6">Rp 0</div>
+            <button onclick="confirmPayment()" class="w-full bg-green-500 text-white py-4 rounded-xl font-bold text-lg hover:bg-green-600 transition-all">SAYA SUDAH BAYAR</button>
+            <p class="text-[10px] text-slate-400 mt-4 uppercase tracking-widest">Otomatis Terverifikasi via ProPOS Gateway</p>
+        </div>
+    </div>
+
+    <div id="scanner-ui" class="hidden fixed inset-0 bg-black/90 z-[9999] flex flex-col items-center justify-center">
+        <div class="w-64 h-64 border-4 border-indigo-500 rounded-3xl overflow-hidden relative">
             <video id="scan-v" class="w-full h-full object-cover"></video>
             <div class="absolute inset-0 border-t-2 border-red-500 animate-bounce"></div>
         </div>
-        <button onclick="stopScan()" class="mt-8 bg-white text-black px-10 py-2 rounded-full font-bold">TUTUP</button>
+        <button onclick="stopScan()" class="mt-8 bg-white text-black px-10 py-3 rounded-full font-bold">BATAL</button>
     </div>
 
     <script>
-        // --- DATABASE ---
-        let db_items = JSON.parse(localStorage.getItem('v3_items')) || [];
-        let db_trx = JSON.parse(localStorage.getItem('v3_trx')) || [];
-        let config = JSON.parse(localStorage.getItem('v3_cfg')) || { name: "Toko Saya", logo: "" };
+        // --- DATA & STATE ---
+        let db_items = JSON.parse(localStorage.getItem('v32_items')) || [];
+        let config = JSON.parse(localStorage.getItem('v32_cfg')) || { 
+            name: "Nama Toko Anda", 
+            qris_id: "081234567890", 
+            header_img: "" 
+        };
         let cart = [];
         let scannerReader = null;
 
         const fmtRp = (n) => "Rp " + new Intl.NumberFormat('id-ID').format(n);
 
-        // --- NAVIGATION ---
         function switchMenu(m) {
             document.querySelectorAll('.sidebar-item').forEach(e => e.classList.remove('active'));
             document.getElementById('nav-'+m).classList.add('active');
             document.getElementById('menu-title').innerText = m.toUpperCase();
             const v = document.getElementById('main-view');
-            
-            if(m === 'barang') renderBarang(v);
+
             if(m === 'transaksi') renderTransaksi(v);
-            if(m === 'dashboard') renderDashboard(v);
             if(m === 'referensi') renderReferensi(v);
             if(m === 'setting') renderSetting(v);
+            if(m === 'barang') renderBarang(v);
+            if(m === 'dashboard') v.innerHTML = `<div class="card-glass p-20 text-center"><i data-lucide="store" class="w-20 h-20 mx-auto mb-4 text-indigo-500"></i><h2 class="text-3xl font-bold">Selamat Datang di ${config.name}</h2></div>`;
             lucide.createIcons();
         }
 
-        // --- KELOLA BARANG ---
-        function renderBarang(v) {
+        // --- REFERENSI ---
+        function renderReferensi(v) {
             v.innerHTML = `
                 <div class="card-glass p-6 mb-8">
-                    <h3 class="font-bold mb-4">Input / Update Stok</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <h3 class="font-bold mb-4 text-indigo-400">Database Produk</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="flex gap-2">
-                            <input id="b-barcode" class="input-field" placeholder="Scan Barcode">
-                            <button onclick="startScan('b-barcode')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera"></i></button>
+                            <input id="ref-barcode" class="input-field" placeholder="Barcode">
+                            <button onclick="startScan('ref-barcode')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera"></i></button>
                         </div>
-                        <input id="b-nama" class="input-field" placeholder="Nama Produk">
-                        <select id="b-tipe" class="input-field">
-                            <option value="awal">Stok Awal</option>
-                            <option value="tambah">Stok Tambah</option>
-                            <option value="rusak">Stok Rusak</option>
-                            <option value="hilang">Stok Hilang</option>
-                        </select>
-                        <input id="b-qty" type="number" class="input-field" placeholder="Jumlah (Qty)">
-                        <input id="b-jual" type="number" class="input-field" placeholder="Harga Jual">
-                        <button onclick="saveItem()" class="bg-green-600 font-bold rounded-lg">SIMPAN DATA</button>
+                        <input id="ref-nama" class="input-field" placeholder="Nama Barang">
+                        <input id="ref-harga" type="number" class="input-field" placeholder="Harga Jual">
+                        <button onclick="saveRef()" class="bg-green-600 font-bold rounded-lg px-6">SIMPAN</button>
                     </div>
                 </div>
-                <div class="card-glass p-6">
-                    <input id="b-search" oninput="searchHighlight(this.value)" class="input-field mb-4" placeholder="Cari Barang (Highlight Tracking)...">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead>
-                                <tr class="text-slate-400 text-sm border-b border-slate-800">
-                                    <th class="p-3">Produk</th><th>Awal</th><th>Tambah</th><th>Rusak</th><th>Hilang</th><th>Terjual</th><th>Sisa Stok</th><th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="list-barang"></tbody>
-                        </table>
-                    </div>
+                <div class="card-glass p-6 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead><tr class="text-slate-500 border-b border-slate-800"><th class="p-4">Barcode</th><th class="p-4">Nama</th><th class="p-4">Harga</th><th class="p-4">Aksi</th></tr></thead>
+                        <tbody id="list-ref"></tbody>
+                    </table>
                 </div>
             `;
-            refreshBarangTable();
+            loadRefTable();
         }
 
-        function saveItem() {
-            const barcode = document.getElementById('b-barcode').value;
-            const nama = document.getElementById('b-nama').value;
-            const tipe = document.getElementById('b-tipe').value;
-            const qty = parseInt(document.getElementById('b-qty').value) || 0;
-            const jual = parseInt(document.getElementById('b-jual').value) || 0;
-
-            let item = db_items.find(i => i.barcode === barcode);
-            if(item) {
-                if(tipe === 'awal') item.awal = qty;
-                if(tipe === 'tambah') item.tambah += qty;
-                if(tipe === 'rusak') item.rusak += qty;
-                if(tipe === 'hilang') item.hilang += qty;
-                item.jual = jual || item.jual;
-                alert("Data diperbarui!");
-            } else {
-                db_items.push({ barcode, nama, awal: qty, tambah: 0, rusak: 0, hilang: 0, terjual: 0, jual });
-                alert("Barang baru ditambahkan!");
-            }
-            localStorage.setItem('v3_items', JSON.stringify(db_items));
-            refreshBarangTable();
+        function saveRef() {
+            const barcode = document.getElementById('ref-barcode').value;
+            const nama = document.getElementById('ref-nama').value;
+            const jual = parseInt(document.getElementById('ref-harga').value);
+            if(!barcode || !nama || !jual) return alert("Lengkapi data!");
+            
+            db_items.push({ barcode, nama, jual, awal:0, tambah:0, rusak:0, hilang:0, terjual:0 });
+            localStorage.setItem('v32_items', JSON.stringify(db_items));
+            loadRefTable();
         }
 
-        function refreshBarangTable() {
-            const tbody = document.getElementById('list-barang');
-            tbody.innerHTML = db_items.map(i => {
-                const sisa = (i.awal + i.tambah) - (i.rusak + i.hilang + i.terjual);
-                let status = sisa <= 0 ? '<span class="text-red-500">HABIS</span>' : (sisa < 10 ? '<span class="text-orange-400">HAMPIR HABIS</span>' : '<span class="text-green-400">AMAN</span>');
-                return `
-                    <tr id="row-${i.barcode}" class="border-b border-slate-800 hover:bg-slate-800/30">
-                        <td class="p-3 font-bold">${i.nama}</td>
-                        <td>${i.awal}</td><td>${i.tambah}</td><td>${i.rusak}</td><td>${i.hilang}</td><td>${i.terjual}</td>
-                        <td class="font-black text-indigo-400">${sisa}</td><td>${status}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function searchHighlight(val) {
-            document.querySelectorAll('tr').forEach(tr => tr.classList.remove('highlight'));
-            if(!val) return;
-            const found = db_items.find(i => i.nama.toLowerCase().includes(val.toLowerCase()) || i.barcode === val);
-            if(found) document.getElementById('row-'+found.barcode).classList.add('highlight');
+        function loadRefTable() {
+            document.getElementById('list-ref').innerHTML = db_items.map((i, idx) => `
+                <tr class="border-b border-slate-800">
+                    <td class="p-4 font-mono text-xs">${i.barcode}</td>
+                    <td class="p-4">${i.nama}</td>
+                    <td class="p-4">${fmtRp(i.jual)}</td>
+                    <td class="p-4"><button onclick="db_items.splice(${idx},1);loadRefTable()" class="text-red-500"><i data-lucide="trash"></i></button></td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
         }
 
         // --- TRANSAKSI ---
         function renderTransaksi(v) {
             cart = [];
             v.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="card-glass p-6">
                         <div class="flex gap-2 mb-6">
-                            <input id="t-scan" class="input-field" placeholder="Scan Barang untuk Jual...">
+                            <input id="t-scan" class="input-field" placeholder="Scan Barang...">
                             <button onclick="startScan('t-scan')" class="bg-indigo-600 p-3 rounded-lg"><i data-lucide="camera"></i></button>
                         </div>
-                        <div id="cart-list" class="space-y-4 max-h-[400px] overflow-auto mb-4"></div>
-                        <div class="border-t border-slate-700 pt-4">
-                            <div class="flex justify-between text-2xl font-black">
-                                <span>Grand Total</span><span id="t-grand">Rp 0</span>
-                            </div>
+                        <div id="cart-list" class="space-y-3 min-h-[300px]"></div>
+                        <div class="mt-6 pt-6 border-t border-slate-700">
+                            <h2 id="t-grand" class="text-4xl font-black text-indigo-400">Rp 0</h2>
                         </div>
                     </div>
                     <div class="card-glass p-6 space-y-4">
-                        <h3 class="font-bold">Metode Pembayaran</h3>
-                        <select id="t-method" class="input-field" onchange="togglePayFields()">
-                            <option value="cash">Cash Aja</option>
-                            <option value="qris">Qris Aja</option>
-                            <option value="split">Cash & Qris</option>
+                        <h3 class="font-bold">Pembayaran</h3>
+                        <select id="pay-method" class="input-field" onchange="updatePayUI()">
+                            <option value="cash">TUNAI (CASH)</option>
+                            <option value="qris">QRIS (OTOMATIS)</option>
+                            <option value="split">CAMPURAN (CASH + QRIS)</option>
                         </select>
-                        <div id="field-cash">
-                            <label class="text-xs text-slate-400">Nominal Cash</label>
-                            <input id="p-cash" type="number" oninput="calcPayment()" class="input-field text-xl" placeholder="0">
+                        <div id="ui-cash" class="space-y-2">
+                            <input id="p-cash" type="number" oninput="calcFinal()" class="input-field text-2xl" placeholder="Masukan Uang Cash">
                         </div>
-                        <div id="field-qris" class="hidden">
-                            <label class="text-xs text-slate-400">Pilih Qris</label>
-                            <select id="q-provider" class="input-field mb-2">
-                                <option>Gopay</option><option>OVO</option><option>Dana</option><option>ShopeePay</option><option>LinkAja</option>
-                            </select>
-                            <label class="text-xs text-slate-400">Nominal Qris</label>
-                            <input id="p-qris" type="number" class="input-field text-xl text-green-400" placeholder="0" readonly>
+                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+                            <span class="text-slate-400">KEMBALIAN:</span>
+                            <span id="p-change" class="text-2xl font-black text-green-400">Rp 0</span>
                         </div>
-                        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
-                            <p class="text-xs text-slate-400">Kembalian</p>
-                            <h2 id="p-change" class="text-3xl font-black text-green-400">Rp 0</h2>
-                        </div>
-                        <button onclick="prosesBayar()" class="w-full bg-indigo-600 py-4 rounded-xl font-bold">BAYAR & CETAK NOTA</button>
+                        <button onclick="prosesBayar()" class="w-full bg-indigo-600 py-6 rounded-2xl font-black text-xl shadow-xl">PROSES PEMBAYARAN</button>
                     </div>
                 </div>
             `;
-            
-            // Auto trigger scan input
-            document.getElementById('t-scan').addEventListener('change', (e) => handleTrxScan(e.target.value));
-        }
-
-        function handleTrxScan(code) {
-            const item = db_items.find(i => i.barcode === code);
-            if(!item) { alert("Barang tidak terdaftar di referensi!"); return; }
-            
-            const inCart = cart.find(c => c.barcode === code);
-            if(inCart) {
-                inCart.qty++;
-            } else {
-                cart.push({ ...item, qty: 1 });
-            }
-            updateCartUI();
-            document.getElementById('t-scan').value = "";
+            document.getElementById('t-scan').addEventListener('change', (e) => {
+                const item = db_items.find(i => i.barcode === e.target.value);
+                if(item) {
+                    const inCart = cart.find(c => c.barcode === item.barcode);
+                    if(inCart) inCart.qty++; else cart.push({...item, qty:1});
+                    updateCartUI();
+                }
+                e.target.value = "";
+            });
         }
 
         function updateCartUI() {
             let total = 0;
             document.getElementById('cart-list').innerHTML = cart.map((c, idx) => {
-                const sub = c.jual * c.qty;
-                total += sub;
-                return `
-                    <div class="flex justify-between items-center bg-slate-800/50 p-4 rounded-xl">
-                        <div>
-                            <p class="font-bold">${c.nama}</p>
-                            <p class="text-xs text-slate-400">${fmtRp(c.jual)} x ${c.qty} = ${fmtRp(sub)}</p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <button onclick="changeQty(${idx}, -1)" class="bg-slate-700 w-8 h-8 rounded">-</button>
-                            <span class="font-bold">${c.qty}</span>
-                            <button onclick="changeQty(${idx}, 1)" class="bg-slate-700 w-8 h-8 rounded">+</button>
-                            <button onclick="removeFromCart(${idx})" class="text-red-500 ml-2"><i data-lucide="trash-2"></i></button>
-                        </div>
-                    </div>
-                `;
+                total += (c.jual * c.qty);
+                return `<div class="flex justify-between p-3 bg-slate-800/50 rounded-lg"><div><b>${c.nama}</b><br><small>${fmtRp(c.jual)} x ${c.qty}</small></div><button onclick="cart.splice(${idx},1);updateCartUI()" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
             }).join('');
-            window.currentGrand = total;
+            window.lastTotal = total;
             document.getElementById('t-grand').innerText = fmtRp(total);
-            calcPayment();
+            calcFinal();
             lucide.createIcons();
         }
 
-        function changeQty(idx, d) {
-            cart[idx].qty += d;
-            if(cart[idx].qty < 1) cart[idx].qty = 1;
-            updateCartUI();
-        }
+        function updatePayUI() { calcFinal(); }
 
-        function removeFromCart(idx) {
-            cart.splice(idx, 1);
-            updateCartUI();
-        }
-
-        function togglePayFields() {
-            const m = document.getElementById('t-method').value;
-            document.getElementById('field-cash').classList.toggle('hidden', m === 'qris');
-            document.getElementById('field-qris').classList.toggle('hidden', m === 'cash');
-            calcPayment();
-        }
-
-        function calcPayment() {
-            const total = window.currentGrand || 0;
-            const m = document.getElementById('t-method').value;
+        function calcFinal() {
+            const total = window.lastTotal || 0;
+            const method = document.getElementById('pay-method').value;
             const cash = parseInt(document.getElementById('p-cash').value) || 0;
-            let change = 0;
-
-            if(m === 'cash') {
-                change = cash - total;
-            } else if (m === 'qris') {
-                document.getElementById('p-qris').value = total;
-                change = 0;
-            } else if (m === 'split') {
-                const sisa = total - cash;
-                document.getElementById('p-qris').value = sisa > 0 ? sisa : 0;
-                change = cash > total ? cash - total : 0;
-            }
-            document.getElementById('p-change').innerText = fmtRp(change < 0 ? 0 : change);
+            let change = cash - total;
+            document.getElementById('p-change').innerText = fmtRp(change > 0 ? change : 0);
         }
 
+        // --- QRIS INTEGRATION ---
         function prosesBayar() {
-            if(cart.length === 0) return alert("Keranjang kosong!");
-            
-            // Kurangi stok
-            cart.forEach(c => {
-                const item = db_items.find(i => i.barcode === c.barcode);
-                if(item) item.terjual += c.qty;
-            });
-            
-            db_trx.push({ date: new Date(), items: cart, total: window.currentGrand });
-            localStorage.setItem('v3_items', JSON.stringify(db_items));
-            localStorage.setItem('v3_trx', JSON.stringify(db_trx));
-            
-            alert("Pembayaran Berhasil! Mencetak Nota...");
+            if(cart.length === 0) return alert("Keranjang masih kosong!");
+            const method = document.getElementById('pay-method').value;
+            const total = window.lastTotal;
+
+            if(method === 'qris' || method === 'split') {
+                let nominalQris = total;
+                if(method === 'split') {
+                    const cash = parseInt(document.getElementById('p-cash').value) || 0;
+                    nominalQris = total - cash;
+                }
+                
+                if(nominalQris <= 0) return finishTrx();
+
+                // Munculkan QRIS
+                document.getElementById('qris-modal').classList.remove('hidden');
+                document.getElementById('qris-amount').innerText = fmtRp(nominalQris);
+                // Generator API (Menggunakan Image-Charts untuk QRIS dinamis)
+                const qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=qris://${config.qris_id}/${nominalQris}`;
+                document.getElementById('qris-image').src = qrisUrl;
+                
+                speak(`Silakan scan QRIS sebesar ${nominalQris} rupiah`);
+            } else {
+                finishTrx();
+            }
+        }
+
+        function confirmPayment() {
+            speak("Pembayaran Berhasil. Saldo Masuk.");
+            closeQris();
+            setTimeout(finishTrx, 500);
+        }
+
+        function finishTrx() {
+            alert("Transaksi Berhasil!");
+            generateNota();
             switchMenu('transaksi');
         }
 
-        // --- DASHBOARD ---
-        function renderDashboard(v) {
-            const totalProfit = db_trx.reduce((a,b) => a+b.total, 0);
+        function closeQris() { document.getElementById('qris-modal').classList.add('hidden'); }
+
+        function speak(t) {
+            const m = new SpeechSynthesisUtterance(t);
+            m.lang = 'id-ID';
+            window.speechSynthesis.speak(m);
+        }
+
+        // --- PDF GENERATOR ---
+        function generateNota() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
+            doc.setFontSize(14); doc.text(config.name, 40, 10, {align: 'center'});
+            doc.setFontSize(8); doc.text(new Date().toLocaleString(), 40, 15, {align: 'center'});
+            doc.text("------------------------------------------", 40, 18, {align: 'center'});
+            let y = 25;
+            cart.forEach(i => {
+                doc.text(`${i.nama}`, 5, y);
+                doc.text(`${i.qty} x ${i.jual}`, 5, y+4);
+                doc.text(`${fmtRp(i.qty*i.jual)}`, 75, y+4, {align: 'right'});
+                y += 10;
+            });
+            doc.text("------------------------------------------", 40, y, {align: 'center'});
+            doc.setFontSize(12); doc.text("TOTAL: " + fmtRp(window.lastTotal), 75, y+8, {align: 'right'});
+            doc.save(`Nota-${Date.now()}.pdf`);
+        }
+
+        // --- SETTING ---
+        function renderSetting(v) {
             v.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="card-glass p-6 border-l-4 border-indigo-500">
-                        <p class="text-slate-400 text-sm">Total Omzet</p>
-                        <h2 class="text-2xl font-black">${fmtRp(totalProfit)}</h2>
+                <div class="card-glass p-8 max-w-lg mx-auto space-y-6">
+                    <h2 class="text-2xl font-bold">Pengaturan Toko & QRIS</h2>
+                    <div>
+                        <label class="text-xs text-slate-400">NAMA TOKO</label>
+                        <input id="set-name" class="input-field" value="${config.name}">
                     </div>
-                    <div class="card-glass p-6 border-l-4 border-green-500">
-                        <p class="text-slate-400 text-sm">Barang Terlaris</p>
-                        <h2 class="text-xl font-bold">${db_items.sort((a,b)=>b.terjual-a.terjual)[0]?.nama || '-'}</h2>
+                    <div>
+                        <label class="text-xs text-slate-400">NOMOR HP QRIS (GOPAY/DANA/OVO)</label>
+                        <input id="set-qris" class="input-field" value="${config.qris_id}" placeholder="Contoh: 08123456789">
+                        <p class="text-[10px] text-indigo-400 mt-2">*Nomor ini akan digunakan sebagai identitas tujuan transfer QRIS</p>
                     </div>
-                    <div class="card-glass p-6 border-l-4 border-red-500">
-                        <p class="text-slate-400 text-sm">Stok Kritis</p>
-                        <h2 class="text-xl font-bold">${db_items.filter(i => (i.awal+i.tambah-i.rusak-i.hilang-i.terjual) < 10).length} Produk</h2>
-                    </div>
-                </div>
-                <div class="card-glass p-6">
-                    <h3 class="font-bold mb-4">Grafik Penjualan</h3>
-                    <canvas id="chartTrx" class="max-h-[300px]"></canvas>
+                    <button onclick="saveSet()" class="w-full bg-indigo-600 py-4 rounded-xl font-bold">SIMPAN PERUBAHAN</button>
                 </div>
             `;
-            setTimeout(initChart, 100);
         }
 
-        function initChart() {
-            const ctx = document.getElementById('chartTrx').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: db_trx.slice(-7).map(t => new Date(t.date).toLocaleDateString()),
-                    datasets: [{ label: 'Sales', data: db_trx.slice(-7).map(t => t.total), borderColor: '#6366f1', tension: 0.4 }]
-                }
-            });
+        function saveSet() {
+            config.name = document.getElementById('set-name').value;
+            config.qris_id = document.getElementById('set-qris').value;
+            localStorage.setItem('v32_cfg', JSON.stringify(config));
+            alert("Setting Berhasil Disimpan!");
+            location.reload();
         }
 
-        // --- SCANNER LOGIC ---
+        // --- UTILS ---
         function startScan(tid) {
-            const ui = document.getElementById('scanner-ui');
-            ui.classList.remove('hidden');
+            document.getElementById('scanner-ui').classList.remove('hidden');
             if(!scannerReader) scannerReader = new ZXing.BrowserMultiFormatReader();
             scannerReader.decodeFromVideoDevice(null, 'scan-v', (res) => {
-                if(res) {
-                    document.getElementById(tid).value = res.text;
-                    if(tid === 't-scan') handleTrxScan(res.text);
-                    stopScan();
-                }
+                if(res) { document.getElementById(tid).value = res.text; stopScan(); }
             });
         }
-        function stopScan() {
-            if(scannerReader) scannerReader.reset();
-            document.getElementById('scanner-ui').classList.add('hidden');
-        }
+        function stopScan() { if(scannerReader) scannerReader.reset(); document.getElementById('scanner-ui').classList.add('hidden'); }
 
-        window.onload = () => switchMenu('dashboard');
+        window.onload = () => {
+            switchMenu('dashboard');
+            setInterval(() => { document.getElementById('clock').innerText = new Date().toLocaleString('id-ID'); }, 1000);
+        };
     </script>
 </body>
 </html>
