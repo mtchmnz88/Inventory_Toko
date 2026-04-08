@@ -3,75 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Inventory Manager</title>
+    <title>POS Saya - Full Scanner</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-    <style>
-        body { background-color: #0f172a; color: #f1f5f9; font-family: sans-serif; }
-        .card { background: rgba(30, 41, 59, 0.8); border: 1px solid #334155; border-radius: 12px; }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 </head>
-<body class="min-h-screen flex flex-col">
-
-    <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold text-indigo-400 flex items-center gap-2">
-                <i data-lucide="store"></i> POS SAYA
-            </h1>
-            <div id="jam" class="text-xs font-mono text-slate-500"></div>
-        </div>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    
+    <header class="bg-slate-900 p-4 border-b border-slate-800 text-center">
+        <h1 class="font-bold text-indigo-400">INVENTORY SCANNER</h1>
     </header>
 
-    <main class="flex-1 p-4 max-w-4xl mx-auto w-full space-y-4">
+    <main class="p-4 max-w-md mx-auto space-y-4">
+        <div id="scanner-container" class="hidden relative overflow-hidden rounded-2xl bg-black aspect-video border-2 border-indigo-500">
+            <video id="video" class="w-full h-full object-cover"></video>
+            <div class="absolute inset-0 border-2 border-red-500 opacity-50 m-10 pointer-events-none"></div>
+        </div>
+
+        <button id="btn-scan" onclick="startScan()" class="w-full bg-indigo-600 py-4 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2">
+            📷 BUKA KAMERA SCAN
+        </button>
         
-        <div class="grid grid-cols-2 gap-3">
-            <div class="card p-4">
-                <p class="text-slate-400 text-xs">Total Barang</p>
-                <p class="text-xl font-bold">120</p>
-            </div>
-            <div class="card p-4">
-                <p class="text-slate-400 text-xs">Penjualan Hari Ini</p>
-                <p class="text-xl font-bold text-green-400">Rp 0</p>
-            </div>
-        </div>
+        <button id="btn-stop" onclick="stopScan()" class="hidden w-full bg-red-600 py-4 rounded-xl font-bold shadow-lg">
+            🛑 BERHENTI SCAN
+        </button>
 
-        <div class="space-y-3">
-            <button onclick="alert('Fitur Scanner akan terbuka!')" class="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95">
-                <i data-lucide="scan-barcode"></i> SCAN BARCODE
-            </button>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="alert('Buka Data Barang')" class="card p-4 flex flex-col items-center gap-2 active:bg-slate-700">
-                    <i data-lucide="package" class="text-indigo-400"></i>
-                    <span class="text-sm">Data Barang</span>
-                </button>
-                <button onclick="alert('Buka Laporan')" class="card p-4 flex flex-col items-center gap-2 active:bg-slate-700">
-                    <i data-lucide="clipboard-list" class="text-indigo-400"></i>
-                    <span class="text-sm">Laporan</span>
-                </button>
-            </div>
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <p class="text-xs text-slate-500 uppercase font-bold">Hasil Barcode:</p>
+            <p id="result" class="text-xl font-mono mt-1 text-green-400">Belum ada data</p>
         </div>
-
-        <div class="card p-4">
-            <h3 class="font-semibold mb-3 border-b border-slate-700 pb-2">Transaksi Terakhir</h3>
-            <p class="text-center text-slate-500 text-sm py-4 italic">Belum ada transaksi hari ini.</p>
-        </div>
-
     </main>
 
-    <footer class="p-4 text-center text-slate-600 text-[10px]">
-        &copy; 2026 POS Inventory System
-    </footer>
-
     <script>
-        // Mengaktifkan Ikon Lucide
-        lucide.createIcons();
+        let selectedDeviceId;
+        const codeReader = new ZXing.BrowserMultiFormatReader();
 
-        // Update Jam Real-time
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('jam').textContent = now.toLocaleTimeString('id-ID');
-        }, 1000);
+        async function startScan() {
+            document.getElementById('scanner-container').classList.remove('hidden');
+            document.getElementById('btn-scan').classList.add('hidden');
+            document.getElementById('btn-stop').classList.remove('hidden');
+
+            codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+                if (result) {
+                    document.getElementById('result').textContent = result.text;
+                    // Suara bip sederhana
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    osc.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                }
+            });
+        }
+
+        function stopScan() {
+            codeReader.reset();
+            document.getElementById('scanner-container').classList.add('hidden');
+            document.getElementById('btn-scan').classList.remove('hidden');
+            document.getElementById('btn-stop').classList.add('hidden');
+        }
     </script>
 </body>
 </html>
