@@ -123,9 +123,9 @@
                     <div class="card p-3 border-top border-primary border-4">
                         <label class="small fw-bold mb-1">Metode Bayar</label>
                         <select id="pay-method" class="form-select mb-3" onchange="updatePayUI()">
-                            <option value="CASH">1 Metode: CASH</option>
-                            <option value="QRIS">1 Metode: QRIS</option>
-                            <option value="SPLIT">2 Metode: SPLIT (Cash + QRIS)</option>
+                            <option value="CASH">CASH</option>
+                            <option value="QRIS">QRIS</option>
+                            <option value="SPLIT">SPLIT (Cash & QRIS)</option>
                         </select>
                         <div id="ui-cash"><label class="small fw-bold">Nominal Cash</label><input type="number" id="in-cash" class="form-control mb-2" oninput="calcSplit()"></div>
                         <div id="ui-qris" class="hidden">
