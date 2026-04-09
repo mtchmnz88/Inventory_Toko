@@ -119,67 +119,70 @@ window.onload = () => {
         
         // --- RENDER DASHBOARD ANALITIK ---
         function renderDashboard(div) {
-            div.innerHTML = `
-                <div class="flex flex-wrap gap-4 justify-between items-end mb-8">
-                    <div class="flex gap-4">
-                        <div class="space-y-1">
-                            <label class="text-[10px] text-slate-500 font-bold uppercase">Filter Tanggal</label>
-                            <input type="date" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs focus:ring-2 ring-indigo-500 outline-none block">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] text-slate-500 font-bold uppercase">Omzet Berdasarkan</label>
-                            <select class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none block">
-                                <option>KESELURUHAN</option>
-                                <option>HARIAN</option>
-                                <option>BULANAN</option>
-                            </select>
-                        </div>
+    div.innerHTML = `
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Ringkasan Analitik</h3>
+                <div id="filter-info" class="text-[10px] text-indigo-400 font-mono mt-1 italic">Menampilkan Semua Data</div>
+            </div>
+            <div class="flex gap-2">
+                <input type="date" id="f-tgl" onchange="updateDashboardByFilter()" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:ring-2 ring-indigo-500">
+                <button onclick="resetFilter()" class="bg-slate-800 p-2 rounded-xl border border-slate-700 hover:bg-slate-700"><i data-lucide="refresh-ccw" class="w-4 h-4 text-slate-400"></i></button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="stat-card border-l-4 border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-transparent">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Total Profit Bersih</p>
+                        <h2 id="v-profit" class="text-3xl font-black mt-1">Rp 0</h2>
                     </div>
-                    <div class="flex gap-4">
-                        <div class="text-right">
-                            <p class="text-[10px] text-red-400 font-bold uppercase">Total Rugi (Rusak/Hilang)</p>
-                            <h3 class="text-2xl font-black">Rp 0</h3>
-                        </div>
-                    </div>
+                    <div class="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><i data-lucide="trending-up"></i></div>
                 </div>
+            </div>
 
-                <div class="stat-card mb-8">
-                    <h3 class="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest">Report Penjualan (Grafik)</h3>
-                    <div class="h-72">
-                        <canvas id="chartUtama"></canvas>
+            <div class="stat-card border-l-4 border-pink-500 bg-gradient-to-br from-pink-500/10 to-transparent">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-[10px] font-black text-pink-400 uppercase tracking-tighter">Total Rugi (Rusak/Hilang)</p>
+                        <h2 id="v-rugi" class="text-3xl font-black mt-1 text-pink-500">Rp 0</h2>
                     </div>
+                    <div class="bg-pink-500/20 p-2 rounded-lg text-pink-400"><i data-lucide="alert-circle"></i></div>
                 </div>
+            </div>
+        </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="stat-card border-t-4 border-t-indigo-500">
-                        <h4 class="text-[10px] font-black text-indigo-400 uppercase mb-4 flex items-center gap-2">
-                            <i data-lucide="trophy" class="w-3"></i> Top 3 Terlaris
-                        </h4>
-                        <div class="space-y-3 text-xs" id="box-terlaris">
-                            <div class="flex justify-between"><span>Produk A</span><span class="font-bold">0</span></div>
-                        </div>
-                    </div>
+        <div class="stat-card mb-8">
+            <h3 class="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest flex items-center gap-2">
+                <i data-lucide="bar-chart-3" class="w-4"></i> Report Penjualan (Grafik)
+            </h3>
+            <div class="h-64"><canvas id="chartUtama"></canvas></div>
+        </div>
 
-                    <div class="stat-card border-t-4 border-t-pink-500">
-                        <h4 class="text-[10px] font-black text-pink-400 uppercase mb-4 flex items-center gap-2">
-                            <i data-lucide="trending-down" class="w-3"></i> 3 Kurang Diminati
-                        </h4>
-                        <div class="space-y-3 text-xs" id="box-tidak-laku">
-                            <div class="flex justify-between"><span>Produk Z</span><span class="font-bold">0</span></div>
-                        </div>
-                    </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="stat-card border-t-4 border-indigo-500">
+                <h4 class="text-[10px] font-black text-indigo-400 uppercase mb-4 flex items-center gap-2"><i data-lucide="trophy" class="w-3"></i> Top 3 Terlaris</h4>
+                <div class="space-y-3 text-xs" id="box-terlaris"></div>
+            </div>
 
-                    <div class="stat-card lg:col-span-2">
-                        <h4 class="text-[10px] font-black text-slate-400 uppercase mb-4">Semua Barang Terjual</h4>
-                        <div class="max-h-32 overflow-y-auto space-y-2 pr-2 text-xs" id="box-semua-terjual">
-                            <p class="opacity-30 italic">Belum ada transaksi harian...</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            initChart();
-        }
+            <div class="stat-card border-t-4 border-pink-500">
+                <h4 class="text-[10px] font-black text-pink-400 uppercase mb-4 flex items-center gap-2"><i data-lucide="frown" class="w-3"></i> 3 Tidak Laku</h4>
+                <div class="space-y-3 text-xs" id="box-tidak-laku"></div>
+            </div>
 
+            <div class="stat-card lg:col-span-2">
+                <h4 class="text-[10px] font-black text-slate-400 uppercase mb-4 flex justify-between">
+                    <span>Barang Terjual</span>
+                    <span id="count-terjual" class="text-indigo-400">0 Items</span>
+                </h4>
+                <div class="max-h-32 overflow-y-auto space-y-2 pr-2 text-[11px]" id="box-semua-terjual"></div>
+            </div>
+        </div>
+    `;
+    updateDashboardByFilter(); // Panggil fungsi hitung data
+}
+        
         function initChart() {
             const ctx = document.getElementById('chartUtama').getContext('2d');
             new Chart(ctx, {
@@ -216,6 +219,56 @@ window.onload = () => {
             if(db_cfg.logo) document.getElementById('logo-toko').src = db_cfg.logo;
             gantiMenu('dashboard');
         };
+        function updateDashboardByFilter() {
+    const tglFilter = document.getElementById('f-tgl').value;
+    const info = document.getElementById('filter-info');
+    
+    // 1. Ambil Data dari Database
+    let sales = JSON.parse(localStorage.getItem('db_sales')) || [];
+    let stok = JSON.parse(localStorage.getItem('db_stok')) || {};
+    let ref = JSON.parse(localStorage.getItem('db_ref')) || [];
+
+    // 2. Filter data berdasarkan tanggal (jika ada)
+    if(tglFilter) {
+        // Asumsi format tanggal di db_sales adalah "YYYY-MM-DD" atau string Date
+        sales = sales.filter(s => s.tgl.includes(tglFilter));
+        info.innerText = "Menampilkan Data Tanggal: " + tglFilter;
+    } else {
+        info.innerText = "Menampilkan Semua Data (Keseluruhan)";
+    }
+
+    // 3. Hitung Total Profit (Penjualan - Modal)
+    let totalProfit = 0;
+    sales.forEach(trx => {
+        totalProfit += trx.total; // Jika db_sales menyimpan total bersih
+    });
+
+    // 4. Hitung Total Rugi (Barang Rusak/Hilang x Harga Beli)
+    let totalRugi = 0;
+    Object.keys(stok).forEach(namaBarang => {
+        const itemStok = stok[namaBarang];
+        const itemRef = ref.find(r => r.nama === namaBarang);
+        if(itemRef) {
+            const jmlRugi = (itemStok.rusak || 0) + (itemStok.hilang || 0);
+            totalRugi += (jmlRugi * itemRef.beli); 
+        }
+    });
+
+    // 5. Update ke Layar
+    document.getElementById('v-profit').innerText = fmtRp(totalProfit);
+    document.getElementById('v-rugi').innerText = fmtRp(totalRugi);
+    
+    // 6. Jalankan ulang ikon Lucide
+    lucide.createIcons();
+    
+    // (Tambahkan logika pengisian Top 3 di sini nanti)
+    renderTop3(sales, ref);
+}
+
+function resetFilter() {
+    document.getElementById('f-tgl').value = "";
+    updateDashboardByFilter();
+                }
     </script>
 </body>
 </html>
