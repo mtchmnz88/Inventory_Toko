@@ -22,43 +22,158 @@
 <body class="flex h-screen w-screen">
 
     <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-6">
-    <div class="flex items-center gap-3 pb-6 border-b border-slate-800">
-        <div class="relative group">
-            <div class="w-12 h-12 rounded-xl overflow-hidden border border-slate-700 bg-slate-800 flex-shrink-0">
-                <img id="logo-toko-img" src="https://via.placeholder.com/48" class="w-full h-full object-cover">
+        <div class="flex items-center gap-3 pb-6 border-b border-slate-800">
+            <div class="relative group">
+                <div class="w-12 h-12 rounded-xl overflow-hidden border border-slate-700 bg-slate-800 flex-shrink-0">
+                    <img id="logo-toko-img" src="https://via.placeholder.com/48" class="w-full h-full object-cover">
+                </div>
+                <label for="upload-logo" class="absolute -bottom-1 -right-1 bg-indigo-600 p-1 rounded-full border-2 border-slate-900 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i data-lucide="pencil" class="w-3 h-3 text-white"></i>
+                    <input type="file" id="upload-logo" class="hidden" accept="image/*" onchange="handleLogoUpload(this)">
+                </label>
             </div>
-            <label for="upload-logo" class="absolute -bottom-1 -right-1 bg-indigo-600 p-1 rounded-full border-2 border-slate-900 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                <i data-lucide="pencil" class="w-3 h-3 text-white"></i>
-                <input type="file" id="upload-logo" class="hidden" accept="image/*" onchange="handleLogoUpload(this)">
-            </label>
+            <div class="overflow-hidden">
+                <div class="text-xl font-black italic text-indigo-500 leading-none">Pro <span class="text-white">POS</span></div>
+                <h2 id="nama-toko-side" class="font-bold text-[10px] text-slate-500 mt-1 truncate uppercase tracking-widest">Nama Toko</h2>
+            </div>
         </div>
         
-        <div class="overflow-hidden">
-            <div class="text-xl font-black italic text-indigo-500 leading-none">Pro <span class="text-white">POS</span></div>
-            <h2 id="nama-toko-side" class="font-bold text-[10px] text-slate-500 mt-1 truncate uppercase tracking-widest">Nama Toko</h2>
-        </div>
-    </div>
-    
-    <nav class="flex flex-col gap-1 flex-1 overflow-y-auto">
-        <div onclick="gantiMenu('dashboard')" id="m-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard" class="w-4"></i> Dashboard</div>
-        <div onclick="gantiMenu('referensi')" id="m-referensi" class="sidebar-item"><i data-lucide="package" class="w-4"></i> Referensi Produk</div>
-        <div onclick="gantiMenu('stok')" id="m-stok" class="sidebar-item"><i data-lucide="boxes" class="w-4"></i> Kelola Stok</div>
-        <div onclick="gantiMenu('transaksi')" id="m-transaksi" class="sidebar-item"><i data-lucide="shopping-cart" class="w-4"></i> Transaksi</div>
-        <div onclick="gantiMenu('report')" id="m-report" class="sidebar-item"><i data-lucide="file-text" class="w-4"></i> Report</div>
-        <div onclick="gantiMenu('setting')" id="m-setting" class="sidebar-item"><i data-lucide="settings" class="w-4"></i> Setting</div>
-    </nav>
-</aside>
+        <nav class="flex flex-col gap-1 flex-1 overflow-y-auto">
+            <div onclick="gantiMenu('dashboard')" id="m-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard" class="w-4"></i> Dashboard</div>
+            <div onclick="gantiMenu('referensi')" id="m-referensi" class="sidebar-item"><i data-lucide="package" class="w-4"></i> Referensi Produk</div>
+            <div onclick="gantiMenu('stok')" id="m-stok" class="sidebar-item"><i data-lucide="boxes" class="w-4"></i> Kelola Stok</div>
+            <div onclick="gantiMenu('transaksi')" id="m-transaksi" class="sidebar-item"><i data-lucide="shopping-cart" class="w-4"></i> Transaksi</div>
+            <div onclick="gantiMenu('report')" id="m-report" class="sidebar-item"><i data-lucide="file-text" class="w-4"></i> Report</div>
+            <div onclick="gantiMenu('setting')" id="m-setting" class="sidebar-item"><i data-lucide="settings" class="w-4"></i> Setting</div>
+        </nav>
+    </aside>
     
     <main class="flex-1 flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
         <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8">
             <h2 id="judul-halaman" class="font-black uppercase tracking-tighter text-indigo-400">Dashboard</h2>
             <div id="jam" class="text-[10px] font-mono text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800"></div>
         </header>
-
-        <div id="konten-utama" class="flex-1 overflow-y-auto p-8">
-            </div>
+        <div id="konten-utama" class="flex-1 overflow-y-auto p-8"></div>
     </main>
 
+    <script>
+        // --- DATA INITIALIZATION ---
+        let db_cfg = JSON.parse(localStorage.getItem('db_cfg')) || { name: "MY STORE", logo: "" };
+        let db_ref = JSON.parse(localStorage.getItem('db_ref')) || [];
+        let db_sales = JSON.parse(localStorage.getItem('db_sales')) || [];
+        let db_stok = JSON.parse(localStorage.getItem('db_stok')) || {};
+
+        // --- CORE NAVIGATION ---
+        function gantiMenu(menu) {
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('m-' + menu).classList.add('active');
+            document.getElementById('judul-halaman').innerText = menu.replace('-', ' ');
+            const target = document.getElementById('konten-utama');
+            
+            if (menu === 'dashboard') renderDashboard(target);
+            else if (menu === 'referensi') renderReferensi(target);
+            else target.innerHTML = `<div class="h-full flex items-center justify-center opacity-10 font-black text-4xl italic uppercase">Menu ${menu} Segera Hadir</div>`;
+            lucide.createIcons();
+        }
+
+        // --- DASHBOARD ---
+        function renderDashboard(div) {
+            div.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="stat-card border-l-4 border-indigo-500 bg-indigo-500/5">
+                        <p class="text-[10px] font-bold text-indigo-400 uppercase">Total Profit</p>
+                        <h2 id="v-profit" class="text-3xl font-black mt-1">Rp 0</h2>
+                    </div>
+                    <div class="stat-card border-l-4 border-pink-500 bg-pink-500/5">
+                        <p class="text-[10px] font-bold text-pink-400 uppercase">Total Rugi</p>
+                        <h2 id="v-rugi" class="text-3xl font-black mt-1">Rp 0</h2>
+                    </div>
+                </div>
+                <div class="stat-card h-64 mb-8"><canvas id="chartUtama"></canvas></div>
+            `;
+            initChart();
+        }
+
+        // --- REFERENSI PRODUK ---
+        function renderReferensi(div) {
+            div.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="stat-card h-fit border-t-4 border-indigo-500">
+                        <h3 id="form-title" class="text-xs font-black text-indigo-400 uppercase mb-6 italic">Tambah/Edit Produk</h3>
+                        <div class="space-y-4">
+                            <input type="hidden" id="edit-index" value="-1">
+                            <input id="ref-nama" placeholder="Nama Produk" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-indigo-500 uppercase">
+                            <div class="flex gap-2">
+                                <input id="ref-bc" placeholder="Barcode" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none">
+                                <button onclick="startScanBc('ref-bc')" class="bg-indigo-600 p-3 rounded-xl hover:bg-indigo-500 transition"><i data-lucide="scan-line" class="w-5 h-5"></i></button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <input id="ref-beli" type="number" placeholder="Harga Beli" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-green-400 font-bold">
+                                <input id="ref-jual" type="number" placeholder="Harga Jual" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-indigo-400 font-bold">
+                            </div>
+                            <button onclick="simpanRef()" class="w-full bg-indigo-600 py-3 rounded-xl text-[10px] font-black uppercase text-white shadow-lg shadow-indigo-500/20">Simpan & Update</button>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 space-y-4">
+                        <input id="search-ref" oninput="filterRef(this.value)" placeholder="Cari barang..." class="bg-slate-800/50 border border-slate-700 rounded-2xl px-6 py-3 text-xs w-full outline-none">
+                        <div class="stat-card p-0 overflow-hidden border border-slate-800">
+                            <table class="w-full text-left text-xs"><thead class="bg-slate-900/50 text-slate-500 uppercase font-black"><tr><th class="p-4">Produk</th><th class="p-4">Beli</th><th class="p-4">Jual</th><th class="p-4 text-center">Aksi</th></tr></thead>
+                            <tbody id="table-ref-body"></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            loadTableRef();
+            lucide.createIcons();
+        }
+
+        function loadTableRef(data = null) {
+            const list = data || db_ref;
+            const body = document.getElementById('table-ref-body');
+            if(!body) return;
+            body.innerHTML = list.map((p, i) => `
+                <tr class="border-b border-slate-800/50 hover:bg-slate-800/20 transition">
+                    <td class="p-4"><div class="font-bold text-slate-200 uppercase">${p.nama}</div><div class="text-[10px] text-slate-500">${p.bc || '-'}</div></td>
+                    <td class="p-4 text-green-400 font-mono italic">${fmtRp(p.beli)}</td>
+                    <td class="p-4 text-indigo-400 font-mono italic">${fmtRp(p.jual)}</td>
+                    <td class="p-4 flex justify-center gap-2">
+                        <button onclick="editRef(${i})" class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        <button onclick="hapusRef(${i})" class="p-2 bg-pink-500/10 text-pink-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function simpanRef() {
+            const idx = parseInt(document.getElementById('edit-index').value);
+            const nama = document.getElementById('ref-nama').value.toUpperCase();
+            const bc = document.getElementById('ref-bc').value;
+            const beli = parseInt(document.getElementById('ref-beli').value) || 0;
+            const jual = parseInt(document.getElementById('ref-jual').value) || 0;
+            if (!nama || !jual) return alert("Nama dan Harga Jual wajib!");
+            const dataBaru = { nama, bc, beli, jual };
+            if (idx === -1) db_ref.push(dataBaru);
+            else db_ref[idx] = dataBaru;
+            localStorage.setItem('db_ref', JSON.stringify(db_ref));
+            alert("Berhasil!");
+            document.getElementById('edit-index').value = "-1";
+            document.getElementById('ref-nama').value = ""; document.getElementById('ref-bc').value = "";
+            document.getElementById('ref-beli').value = ""; document.getElementById('ref-jual').value = "";
+            loadTableRef();
+        }
+
+        function editRef(i) {
+            const item = db_ref[i];
+            document.getElementById('edit-index').value = i;
+            document.getElementById('ref-nama').value = item.nama;
+            document.getElementById('ref-bc').value = item.bc;
+            document.getElementById('ref-beli').value = item.beli;
+            document.getElementById('ref-jual').value = item.jual;
+        }
+
+        function hapusRef(i) {
+            if(confirm("Hapus?")) { db_ref.splice(
     <script>
            // 1. DATA INITIALIZATION
 let db_cfg = JSON.parse(localStorage.getItem('db_cfg')) || { name: "MY STORE", logo: "" };
