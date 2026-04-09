@@ -268,7 +268,189 @@ window.onload = () => {
 function resetFilter() {
     document.getElementById('f-tgl').value = "";
     updateDashboardByFilter();
-                }
+                } 
+
+        // --- RENDER REFENSI ---
+function renderReferensi(div) {
+    div.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="stat-card h-fit border-t-4 border-indigo-500">
+                <h3 id="form-title" class="text-xs font-black text-indigo-400 uppercase mb-6 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4"></i> Tambah / Edit Produk
+                </h3>
+                <div class="space-y-4">
+                    <input type="hidden" id="edit-index" value="-1">
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold uppercase">Nama Produk</label>
+                        <input id="ref-nama" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-indigo-500 uppercase">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold uppercase">Barcode</label>
+                        <div class="flex gap-2">
+                            <input id="ref-bc" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none">
+                            <button onclick="startScanBc('ref-bc')" class="bg-indigo-600 p-3 rounded-xl hover:bg-indigo-500 transition">
+                                <i data-lucide="scan-line" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Harga Beli</label>
+                            <input id="ref-beli" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-green-500 font-bold text-green-400">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Harga Jual</label>
+                            <input id="ref-jual" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-indigo-500 font-bold text-indigo-400">
+                        </div>
+                    </div>
+                    <div class="pt-4 flex gap-2">
+                        <button onclick="batalEdit()" class="flex-1 bg-slate-800 py-3 rounded-xl text-xs font-bold hover:bg-slate-700">BATAL</button>
+                        <button id="btn-save-ref" onclick="simpanRef()" class="flex-[2] bg-indigo-600 py-3 rounded-xl text-xs font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-500/20">SIMPAN DATA</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+                <div class="flex gap-4">
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-500"></i>
+                        <input id="search-ref" oninput="filterRef(this.value)" placeholder="Cari nama produk atau barcode..." class="bg-slate-800/50 border border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-xs w-full outline-none">
+                    </div>
+                    <button onclick="gantiMenu('referensi')" class="bg-slate-800 p-3 rounded-2xl border border-slate-700 hover:bg-slate-700">
+                        <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-400"></i>
+                    </button>
+                </div>
+
+                <div class="stat-card overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-900/50 text-slate-500 uppercase font-black">
+                                <tr>
+                                    <th class="p-4">Produk</th>
+                                    <th class="p-4">Beli</th>
+                                    <th class="p-4">Jual</th>
+                                    <th class="p-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-ref-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="stat-card border-t-4 border-t-green-500">
+                    <h3 class="text-[10px] font-black text-green-500 uppercase mb-4">Metode Bayar Aktif</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="bg-green-500/10 text-green-400 px-3 py-1 rounded-lg border border-green-500/20 text-[10px] font-bold">CASH</span>
+                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">QRIS SHOPEEPAY</span>
+                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">OVO</span>
+                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">DANA</span>
+                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">LINK AJA</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    loadTableRef();
+    lucide.createIcons();
+} 
+    // Database Produk
+let db_ref = JSON.parse(localStorage.getItem('db_ref')) || [];
+
+function loadTableRef(data = null) {
+    const list = data || db_ref;
+    const body = document.getElementById('table-ref-body');
+    body.innerHTML = list.map((p, i) => `
+        <tr class="border-b border-slate-800/50 hover:bg-slate-800/20 transition">
+            <td class="p-4">
+                <div class="font-bold text-slate-200 uppercase">${p.nama}</div>
+                <div class="text-[10px] text-slate-500 font-mono italic">${p.bc || 'No Barcode'}</div>
+            </td>
+            <td class="p-4 font-mono text-green-400">${fmtRp(p.beli)}</td>
+            <td class="p-4 font-mono text-indigo-400">${fmtRp(p.jual)}</td>
+            <td class="p-4">
+                <div class="flex justify-center gap-2">
+                    <button onclick="editRef(${i})" class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition">
+                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="hapusRef(${i})" class="p-2 bg-pink-500/10 text-pink-400 rounded-lg hover:bg-pink-500 hover:text-white transition">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    lucide.createIcons();
+}
+
+function simpanRef() {
+    const idx = parseInt(document.getElementById('edit-index').value);
+    const nama = document.getElementById('ref-nama').value.toUpperCase();
+    const bc = document.getElementById('ref-bc').value;
+    const beli = parseInt(document.getElementById('ref-beli').value) || 0;
+    const jual = parseInt(document.getElementById('ref-jual').value) || 0;
+
+    if (!nama || !jual) return alert("Minimal isi Nama dan Harga Jual!");
+
+    const dataBaru = { nama, bc, beli, jual };
+
+    if (idx === -1) {
+        // Tambah Baru
+        db_ref.push(dataBaru);
+        // Otomatis buatkan slot di stok jika belum ada
+        let stok = JSON.parse(localStorage.getItem('db_stok')) || {};
+        if(!stok[nama]) stok[nama] = { awal:0, masuk:0, laku:0, rusak:0, hilang:0 };
+        localStorage.setItem('db_stok', JSON.stringify(stok));
+    } else {
+        // Update data lama
+        db_ref[idx] = dataBaru;
+    }
+
+    localStorage.setItem('db_ref', JSON.stringify(db_ref));
+    alert("Data berhasil disimpan!");
+    batalEdit();
+    loadTableRef();
+}
+
+function editRef(i) {
+    const item = db_ref[i];
+    document.getElementById('form-title').innerHTML = `<i data-lucide="pencil" class="w-4"></i> Edit Produk`;
+    document.getElementById('edit-index').value = i;
+    document.getElementById('ref-nama').value = item.nama;
+    document.getElementById('ref-bc').value = item.bc;
+    document.getElementById('ref-beli').value = item.beli;
+    document.getElementById('ref-jual').value = item.jual;
+    lucide.createIcons();
+}
+
+function hapusRef(i) {
+    if (confirm("Hapus item ini selamanya?")) {
+        db_ref.splice(i, 1);
+        localStorage.setItem('db_ref', JSON.stringify(db_ref));
+        loadTableRef();
+    }
+}
+
+function batalEdit() {
+    document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4"></i> Tambah / Edit Produk`;
+    document.getElementById('edit-index').value = "-1";
+    document.getElementById('ref-nama').value = "";
+    document.getElementById('ref-bc').value = "";
+    document.getElementById('ref-beli').value = "";
+    document.getElementById('ref-jual').value = "";
+    lucide.createIcons();
+}
+
+function filterRef(val) {
+    const hasil = db_ref.filter(p => 
+        p.nama.toLowerCase().includes(val.toLowerCase()) || 
+        p.bc.includes(val)
+    );
+    loadTableRef(hasil);
+}
+
+// Fungsi bantu Format Rupiah (Jika belum ada)
+const fmtRp = (n) => "Rp " + new Intl.NumberFormat('id-ID').format(n);
+
     </script>
 </body>
 </html>
