@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master POS v11 - Scan & Analytics</title>
+    <title>Master POS v12 - Full Inventory System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,163 +11,204 @@
     
     <style>
         :root { --primary: #1e293b; --accent: #3b82f6; --sidebar-width: 250px; }
-        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; font-size: 13px; }
-        .sidebar { width: var(--sidebar-width); position: fixed; height: 100vh; background: var(--primary); color: white; z-index: 1000; overflow-y: auto; }
-        .sidebar-brand { padding: 25px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: bold; }
-        .sidebar a { color: #94a3b8; text-decoration: none; padding: 12px 20px; display: block; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; font-size: 12px; }
+        .sidebar { width: var(--sidebar-width); position: fixed; height: 100vh; background: var(--primary); color: white; z-index: 1000; }
+        .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: bold; }
+        .sidebar a { color: #94a3b8; text-decoration: none; padding: 12px 20px; display: block; }
         .sidebar a:hover, .sidebar a.active { background: #334155; color: white; border-left: 4px solid var(--accent); }
         .main-content { margin-left: var(--sidebar-width); padding: 20px; min-height: 100vh; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .hidden { display: none; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
-        .qris-box { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 15px; border-radius: 12px; }
-        #receipt-content { width: 80mm; background: white; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #ddd; margin: 0 auto; }
-        @media print { body * { visibility: hidden; } #receipt-content, #receipt-content * { visibility: visible; } #receipt-content { position: absolute; left: 0; top: 0; width: 100%; border: none; } }
+        .table-stok input { width: 60px; text-align: center; border: 1px solid #ddd; border-radius: 4px; }
+        .badge-habis { background: #ef4444; }
+        .badge-hampir { background: #f59e0b; }
+        .badge-aman { background: #10b981; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; background: #000; }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <div class="sidebar-brand">SMART POS SCANNER</div>
+        <div class="sidebar-brand">SMART POS PRO</div>
         <nav class="mt-2">
-            <a href="#" onclick="showSection('dashboard')" class="nav-link active"><i class="bi bi-graph-up-arrow me-2"></i> Dashboard</a>
-            <a href="#" onclick="showSection('transaksi')" class="nav-link"><i class="bi bi-upc-scan me-2"></i> Kasir & Scan</a>
-            <a href="#" onclick="showSection('referensi')" class="nav-link"><i class="bi bi-box-seam me-2"></i> Produk (Referensi)</a>
-            <a href="#" onclick="showSection('stok')" class="nav-link"><i class="bi bi-archive me-2"></i> Stok</a>
-            <a href="#" onclick="showSection('setting')" class="nav-link"><i class="bi bi-qr-code-scan me-2"></i> Setting QRIS</a>
+            <a href="#" onclick="showSection('dashboard')" class="nav-link active"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="#" onclick="showSection('transaksi')" class="nav-link"><i class="bi bi-upc-scan me-2"></i> Kasir</a>
+            <a href="#" onclick="showSection('referensi')" class="nav-link"><i class="bi bi-tag me-2"></i> Input Produk</a>
+            <a href="#" onclick="showSection('stok')" class="nav-link"><i class="bi bi-box-seam me-2"></i> Manajemen Stok</a>
+            <a href="#" onclick="showSection('setting')" class="nav-link"><i class="bi bi-gear me-2"></i> Setting QRIS</a>
         </nav>
     </div>
 
     <div class="main-content">
         
-        <div id="section-dashboard" class="section">
-            <h4 class="mb-4">Analisa Penjualan</h4>
-            <div class="row g-3 mb-4">
-                <div class="col-md-3"><div class="card p-3 bg-primary text-white"><span>Profit</span><h4 id="dash-profit">Rp 0</h4></div></div>
-                <div class="col-md-3"><div class="card p-3 bg-danger text-white"><span>Modal (HPP)</span><h4 id="dash-rugi">Rp 0</h4></div></div>
-                <div class="col-md-3"><div class="card p-3 bg-white"><span>Total Produk</span><h4 id="dash-total-p" class="text-primary">0</h4></div></div>
-                <div class="col-md-3"><div class="card p-3 bg-warning text-dark"><span>Stok Habis</span><h4 id="dash-out-stock">0</h4></div></div>
+        <div id="section-stok" class="section hidden">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3><i class="bi bi-box-seam"></i> Manajemen Stok Inventori</h3>
+                <button class="btn btn-primary btn-sm" onclick="renderStokTable()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
-            <div class="row">
-                <div class="col-md-8"><div class="card p-4"><h6>Grafik Penjualan</h6><canvas id="salesChart" height="150"></canvas></div></div>
-                <div class="col-md-4">
-                    <div class="card p-3"><h6>Top 5 Terlaris</h6><div id="list-top-5" class="small mt-2"></div></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="section-transaksi" class="section hidden">
-            <div class="row">
-                <div class="col-md-7">
-                    <div class="card p-3">
-                        <div class="d-flex gap-2 mb-3">
-                            <button class="btn btn-primary btn-sm" onclick="startScanner()"><i class="bi bi-camera"></i> Buka Kamera Scan</button>
-                            <button class="btn btn-secondary btn-sm" onclick="stopScanner()">Tutup Kamera</button>
-                        </div>
-                        <div id="reader" class="mb-3"></div>
-                        <select id="tx-drop" class="form-select mb-3" onchange="if(this.value) handleAdd(this.value)"></select>
-                        <table class="table">
-                            <thead><tr><th>Item</th><th>Qty</th><th>Total</th><th>#</th></tr></thead>
-                            <tbody id="cart-table"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="col-md-5">
-                    <div class="card p-4 shadow border-top border-primary border-4 text-center">
-                        <small>Grand Total</small>
-                        <h2 class="fw-bold text-primary mb-3" id="total-val">Rp 0</h2>
-                        <select id="pay-method" class="form-select mb-3" onchange="updatePayUI()">
-                            <option value="CASH">Tunai (Cash)</option>
-                            <option value="qr_sp">QRIS ShopeePay</option>
-                            <option value="qr_da">QRIS Dana</option>
-                            <option value="qr_gp">QRIS Gopay</option>
-                        </select>
-                        <div id="ui-qris" class="qris-box hidden mb-3">
-                            <img id="display-qris-img" src="" style="width: 150px; height: 150px; background: white; border: 1px solid #ddd;">
-                            <div class="mt-2 fw-bold text-danger">NOMINAL: <span id="qris-bill">Rp 0</span></div>
-                        </div>
-                        <button class="btn btn-success w-100 py-3 fw-bold" onclick="previewStruk()">KONFIRMASI & CETAK</button>
-                    </div>
+            <div class="card p-3">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-stok align-middle text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Nama Produk</th>
+                                <th>Stok Awal</th>
+                                <th>Tambah</th>
+                                <th>Hilang</th>
+                                <th>Rusak</th>
+                                <th>Retur</th>
+                                <th>Terjual</th>
+                                <th class="table-primary">Sisa</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stok-table-body">
+                            </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
         <div id="section-referensi" class="section hidden">
-            <h3>Input Referensi Produk</h3>
+            <h3>Input Produk Baru</h3>
             <div class="card p-4">
-                <div class="row g-2 mb-3">
-                    <div class="col-md-3"><input type="text" id="ref-code" class="form-control" placeholder="Barcode (Scan/Ketik)"></div>
-                    <div class="col-md-3"><input type="text" id="ref-nama" class="form-control" placeholder="Nama Barang"></div>
-                    <div class="col-md-2"><input type="number" id="ref-beli" class="form-control" placeholder="Harga Beli"></div>
-                    <div class="col-md-2"><input type="number" id="ref-jual" class="form-control" placeholder="Harga Jual"></div>
+                <div class="row g-2">
+                    <div class="col-md-3"><input type="text" id="ref-code" class="form-control" placeholder="Barcode"></div>
+                    <div class="col-md-3"><input type="text" id="ref-nama" class="form-control" placeholder="Nama Produk"></div>
+                    <div class="col-md-2"><input type="number" id="ref-beli" class="form-control" placeholder="HPP"></div>
+                    <div class="col-md-2"><input type="number" id="ref-jual" class="form-control" placeholder="Jual"></div>
                     <div class="col-md-2"><button class="btn btn-success w-100" onclick="saveRef()">Simpan</button></div>
                 </div>
-                <table class="table table-hover"><thead><tr><th>Barcode</th><th>Nama</th><th>HPP</th><th>Jual</th><th>#</th></tr></thead><tbody id="ref-table-body"></tbody></table>
             </div>
         </div>
 
-        <div id="section-stok" class="section hidden">
-            <h3>Monitoring Stok</h3>
-            <div class="card p-3"><table class="table"><tbody id="stok-table-body"></tbody></table></div>
+        <div id="section-transaksi" class="section">
+             <div class="row">
+                <div class="col-md-8">
+                    <div class="card p-3">
+                        <div id="reader" class="mb-2"></div>
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-sm btn-primary" onclick="startScanner()">Buka Kamera</button>
+                            <select id="tx-drop" class="form-select form-select-sm" onchange="if(this.value) handleAdd(this.value)"></select>
+                        </div>
+                        <table class="table">
+                            <thead><tr><th>Item</th><th>Qty</th><th>Subtotal</th><th>#</th></tr></thead>
+                            <tbody id="cart-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card p-3 text-center shadow border-top border-primary border-4">
+                        <h6>Grand Total</h6>
+                        <h2 class="text-primary fw-bold" id="total-val">Rp 0</h2>
+                        <select id="pay-method" class="form-select mb-3" onchange="updatePayUI()">
+                            <option value="CASH">Cash</option>
+                            <option value="qr_da">Dana</option>
+                            <option value="qr_sp">ShopeePay</option>
+                        </select>
+                        <div id="ui-qris" class="hidden mb-2">
+                            <img id="display-qris-img" src="" style="width:120px; border:1px solid #ddd;">
+                        </div>
+                        <button class="btn btn-success w-100 fw-bold" onclick="previewStruk()">BAYAR & CETAK</button>
+                    </div>
+                </div>
+             </div>
         </div>
 
+        <div id="section-dashboard" class="section hidden">
+            <h4>Ringkasan Bisnis</h4>
+            <div class="row g-3">
+                <div class="col-md-4"><div class="card p-3 bg-primary text-white">Profit <h3 id="dash-profit">0</h3></div></div>
+                <div class="col-md-8"><div class="card p-3"><canvas id="salesChart" height="100"></canvas></div></div>
+            </div>
+        </div>
+        
         <div id="section-setting" class="section hidden">
-            <h3>Upload QRIS Toko</h3>
-            <div class="card p-4 text-center">
-                <div class="row g-3">
-                    <div class="col-md-4">ShopeePay<input type="file" onchange="uploadQR(this, 'qr_sp')" class="form-control mt-1"></div>
-                    <div class="col-md-4">Dana<input type="file" onchange="uploadQR(this, 'qr_da')" class="form-control mt-1"></div>
-                    <div class="col-md-4">Gopay<input type="file" onchange="uploadQR(this, 'qr_gp')" class="form-control mt-1"></div>
-                </div>
+            <h4>Upload Barcode QRIS</h4>
+            <div class="card p-3">
+                Dana: <input type="file" onchange="uploadQR(this, 'qr_da')" class="mb-2">
+                ShopeePay: <input type="file" onchange="uploadQR(this, 'qr_sp')">
             </div>
         </div>
 
     </div>
 
-    <div class="modal fade" id="modalStruk" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content"><div class="modal-body"><div id="receipt-content"></div></div><div class="modal-footer"><button class="btn btn-primary w-100" onclick="confirmFinish()">SIMPAN & CETAK</button></div></div></div></div>
+    <div class="modal fade" id="modalStruk" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content"><div class="modal-body"><div id="receipt-content"></div><button class="btn btn-primary w-100 mt-3" onclick="confirmFinish()">KONFIRMASI</button></div></div></div></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Database
         let dbRef = JSON.parse(localStorage.getItem('pos_db_ref')) || [];
         let reports = JSON.parse(localStorage.getItem('pos_reports')) || [];
         let qrImages = JSON.parse(localStorage.getItem('pos_qr_imgs')) || {};
         let cart = [];
-        let html5QrCode;
-        let salesChart;
 
-        window.onload = () => { renderAll(); renderDashboard(); };
-
-        function formatRP(n) { return "Rp " + parseInt(n).toLocaleString('id-ID'); }
+        window.onload = () => { renderAll(); renderStokTable(); };
 
         function showSection(id) {
             document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
             document.getElementById('section-' + id).classList.remove('hidden');
-            if(id === 'dashboard') renderDashboard();
-            renderAll();
+            if(id === 'stok') renderStokTable();
         }
 
-        // --- SCANNER LOGIC ---
-        function startScanner() {
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    handleAdd(decodedText);
-                    stopScanner(); // Stop sebentar setelah scan berhasil
-                    setTimeout(startScanner, 2000); // Mulai lagi setelah 2 detik
-                }
-            ).catch(err => alert("Kamera Gagal: " + err));
+        // --- FUNGSI MANAJEMEN STOK ---
+        function renderStokTable() {
+            let h = '';
+            dbRef.forEach((p, i) => {
+                // Pastikan variabel ada, jika tidak set 0
+                let awal = p.stok_awal || 0;
+                let tambah = p.stok_tambah || 0;
+                let hilang = p.stok_hilang || 0;
+                let rusak = p.stok_rusak || 0;
+                let retur = p.stok_retur || 0;
+                let terjual = p.terjual || 0;
+
+                // Hitung Sisa
+                let sisa = (parseInt(awal) + parseInt(tambah)) - (parseInt(hilang) + parseInt(rusak) + parseInt(retur) + parseInt(terjual));
+                p.stok = sisa; // Update stok utama
+
+                // Tentukan Status
+                let status = '<span class="badge badge-aman">Aman</span>';
+                if(sisa <= 0) status = '<span class="badge badge-habis">Habis</span>';
+                else if(sisa < 10) status = '<span class="badge badge-hampir">Hampir Habis</span>';
+
+                h += `<tr>
+                    <td class="fw-bold">${p.nama}</td>
+                    <td><input type="number" id="awal-${i}" value="${awal}"></td>
+                    <td><input type="number" id="tambah-${i}" value="${tambah}"></td>
+                    <td><input type="number" id="hilang-${i}" value="${hilang}"></td>
+                    <td><input type="number" id="rusak-${i}" value="${rusak}"></td>
+                    <td><input type="number" id="retur-${i}" value="${retur}"></td>
+                    <td class="text-danger fw-bold">${terjual}</td>
+                    <td class="table-primary fw-bold text-dark">${sisa}</td>
+                    <td>${status}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="updateStok(${i})" title="Simpan"><i class="bi bi-check-lg"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="hapusProduk(${i})" title="Hapus"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            document.getElementById('stok-table-body').innerHTML = h;
+            saveToLocal();
         }
 
-        function stopScanner() {
-            if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
+        function updateStok(i) {
+            dbRef[i].stok_awal = document.getElementById(`awal-${i}`).value;
+            dbRef[i].stok_tambah = document.getElementById(`tambah-${i}`).value;
+            dbRef[i].stok_hilang = document.getElementById(`hilang-${i}`).value;
+            dbRef[i].stok_rusak = document.getElementById(`rusak-${i}`).value;
+            dbRef[i].stok_retur = document.getElementById(`retur-${i}`).value;
+            
+            alert("Data Stok " + dbRef[i].nama + " Berhasil Diperbarui!");
+            renderStokTable();
         }
 
-        // --- TRANSACTION LOGIC ---
+        // --- TRANSAKSI & LAINNYA ---
         function handleAdd(code) {
             const p = dbRef.find(x => x.barcode === code || x.nama === code);
-            if(!p) return alert("Produk tidak ditemukan di Referensi!");
+            if(!p) return alert("Produk Tidak Ada!");
             if(p.stok <= 0) return alert("Stok Habis!");
-            
+
             let item = cart.find(c => c.nama === p.nama);
             if(item) { item.qty++; item.sub = item.qty * item.jual; }
             else { cart.push({ ...p, qty: 1, sub: parseInt(p.jual) }); }
@@ -176,109 +217,75 @@
 
         function renderCart() {
             let h = '', t = 0;
-            cart.forEach((c, i) => { 
-                t += c.sub; 
-                h += `<tr><td>${c.nama}</td><td>${c.qty}</td><td>${formatRP(c.sub)}</td><td><button class='btn btn-sm' onclick='cart.splice(${i},1);renderCart()'>❌</button></td></tr>`;
-            });
-            document.getElementById('cart-table').innerHTML = h;
-            document.getElementById('total-val').innerText = formatRP(t);
-            document.getElementById('qris-bill').innerText = formatRP(t);
-        }
-
-        function updatePayUI() {
-            const m = document.getElementById('pay-method').value;
-            const ui = document.getElementById('ui-qris');
-            if(m !== 'CASH') {
-                ui.classList.remove('hidden');
-                document.getElementById('display-qris-img').src = qrImages[m] || "";
-            } else ui.classList.add('hidden');
-        }
-
-        // --- REFERENSI & DATA ---
-        function saveRef() {
-            const c = document.getElementById('ref-code').value;
-            const n = document.getElementById('ref-nama').value;
-            const b = document.getElementById('ref-beli').value;
-            const j = document.getElementById('ref-jual').value;
-            dbRef.push({ barcode: c, nama: n, hpp: parseInt(b), jual: parseInt(j), stok: 100 });
-            localStorage.setItem('pos_db_ref', JSON.stringify(dbRef));
-            renderAll();
-        }
-
-        function renderAll() {
-            let hr = '', hs = '', d = '<option value="">-- Cari Barang --</option>';
-            dbRef.forEach((p, i) => {
-                hr += `<tr><td>${p.barcode}</td><td>${p.nama}</td><td>${formatRP(p.hpp)}</td><td>${formatRP(p.jual)}</td><td><button class='btn btn-sm' onclick='dbRef.splice(${i},1);renderAll()'>🗑️</button></td></tr>`;
-                hs += `<tr><td>${p.nama}</td><td class='fw-bold'>${p.stok}</td></tr>`;
-                d += `<option value="${p.barcode}">${p.nama}</option>`;
-            });
-            document.getElementById('ref-table-body').innerHTML = hr;
-            document.getElementById('stok-table-body').innerHTML = hs;
-            document.getElementById('tx-drop').innerHTML = d;
-        }
-
-        function previewStruk() {
-            if(!cart.length) return;
-            let h = `<strong>STRUK KASIR</strong><hr>`;
-            cart.forEach(c => h += `<div>${c.nama} x${c.qty} = ${formatRP(c.sub)}</div>`);
-            h += `<hr><strong>TOTAL: ${document.getElementById('total-val').innerText}</strong>`;
-            document.getElementById('receipt-content').innerHTML = h;
-            new bootstrap.Modal('#modalStruk').show();
+            cart.forEach((c, i) => { t += c.sub; h += `<tr><td>${c.nama}</td><td>${c.qty}</td><td>${c.sub}</td><td><button onclick="cart.splice(${i},1);renderCart()">x</button></td></tr>`; });
+            document.getElementById('total-val').innerText = "Rp " + t.toLocaleString();
         }
 
         function confirmFinish() {
-            reports.push({ time: new Date().toLocaleDateString(), items: [...cart], total: cart.reduce((a,b) => a+b.sub, 0) });
-            cart.forEach(c => { let p = dbRef.find(x => x.nama === c.nama); if(p) p.stok -= c.qty; });
-            localStorage.setItem('pos_reports', JSON.stringify(reports));
-            localStorage.setItem('pos_db_ref', JSON.stringify(dbRef));
-            window.print();
-            location.reload(); // Refresh untuk update dashboard
+            cart.forEach(c => {
+                let p = dbRef.find(x => x.nama === c.nama);
+                if(p) p.terjual = (p.terjual || 0) + c.qty;
+            });
+            reports.push({ items: [...cart], total: cart.reduce((a,b) => a+b.sub,0) });
+            saveToLocal();
+            location.reload();
         }
 
-        // --- DASHBOARD ANALYTICS ---
-        function renderDashboard() {
-            let profit = 0, modal = 0, outStock = 0;
-            let productStats = {};
-            dbRef.forEach(p => { 
-                productStats[p.nama] = 0;
-                if(p.stok <= 0) outStock++;
+        function saveRef() {
+            const n = document.getElementById('ref-nama').value;
+            const b = document.getElementById('ref-code').value;
+            dbRef.push({ 
+                barcode: b, nama: n, 
+                hpp: document.getElementById('ref-beli').value, 
+                jual: document.getElementById('ref-jual').value,
+                stok_awal: 0, stok_tambah: 0, stok_hilang: 0, stok_rusak: 0, stok_retur: 0, terjual: 0
             });
+            saveToLocal();
+            renderAll();
+            alert("Produk Berhasil Ditambah!");
+        }
 
-            reports.forEach(r => {
-                r.items.forEach(item => {
-                    profit += (item.qty * (item.jual - item.hpp));
-                    modal += (item.qty * item.hpp);
-                    productStats[item.nama] = (productStats[item.nama] || 0) + item.qty;
-                });
-            });
+        function hapusProduk(i) {
+            if(confirm("Hapus produk ini secara permanen?")) {
+                dbRef.splice(i, 1);
+                renderStokTable();
+            }
+        }
 
-            document.getElementById('dash-profit').innerText = formatRP(profit);
-            document.getElementById('dash-rugi').innerText = formatRP(modal);
-            document.getElementById('dash-total-p').innerText = dbRef.length;
-            document.getElementById('dash-out-stock').innerText = outStock;
+        function saveToLocal() {
+            localStorage.setItem('pos_db_ref', JSON.stringify(dbRef));
+            localStorage.setItem('pos_reports', JSON.stringify(reports));
+        }
 
-            const sorted = Object.entries(productStats).sort((a,b) => b[1] - a[1]);
-            document.getElementById('list-top-5').innerHTML = sorted.slice(0,5).map(i => `<div class='d-flex justify-content-between'><span>${i[0]}</span><span class='badge bg-success'>${i[1]}</span></div>`).join('<hr class="my-1">');
-
-            const ctx = document.getElementById('salesChart').getContext('2d');
-            if(salesChart) salesChart.destroy();
-            salesChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(productStats),
-                    datasets: [{ label: 'Qty Terjual', data: Object.values(productStats), backgroundColor: '#3b82f6' }]
-                }
-            });
+        function renderAll() {
+            let d = '<option value="">-- Pilih --</option>';
+            dbRef.forEach(p => d += `<option value="${p.barcode}">${p.nama}</option>`);
+            document.getElementById('tx-drop').innerHTML = d;
         }
 
         function uploadQR(input, key) {
             if(input.files[0]) {
                 let r = new FileReader();
-                r.onload = (e) => { qrImages[key] = e.target.result; localStorage.setItem('pos_qr_imgs', JSON.stringify(qrImages)); alert("QR Tersimpan!"); };
+                r.onload = (e) => { qrImages[key] = e.target.result; localStorage.setItem('pos_qr_imgs', JSON.stringify(qrImages)); };
                 r.readAsDataURL(input.files[0]);
             }
         }
+        
+        function updatePayUI() {
+            const m = document.getElementById('pay-method').value;
+            if(m !== 'CASH') {
+                document.getElementById('ui-qris').classList.remove('hidden');
+                document.getElementById('display-qris-img').src = qrImages[m] || "";
+            } else document.getElementById('ui-qris').classList.add('hidden');
+        }
+
+        function previewStruk() {
+            let h = "<strong>STRUK PENJUALAN</strong><hr>";
+            cart.forEach(c => h += `<div>${c.nama} x${c.qty}</div>`);
+            document.getElementById('receipt-content').innerHTML = h;
+            new bootstrap.Modal('#modalStruk').show();
+        }
     </script>
 </body>
-    </html>
-    
+                            </html>
+                            
