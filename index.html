@@ -1,294 +1,279 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-  <base target="_top">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  
-  <style>
-    /* --- CSS UNTUK TAMPILAN --- */
-    :root { 
-      --primary-dark: #2c3e50; 
-      --accent-color: #3498db; 
-      --bg-light: #f4f6f9;
-    }
-    body { background: var(--bg-light); font-size: 13px; font-family: 'Segoe UI', sans-serif; }
-    
-    /* Sidebar Styling */
-    .sidebar { 
-      width: 230px; position: fixed; height: 100vh; 
-      background: var(--primary-dark); color: white; padding-top: 10px;
-    }
-    .sidebar-brand { text-align: center; padding: 20px 10px; border-bottom: 1px solid #3e4f5f; }
-    .sidebar a { 
-      color: #bdc3c7; text-decoration: none; padding: 12px 20px; 
-      display: block; transition: 0.2s; border-left: 4px solid transparent;
-    }
-    .sidebar a:hover, .sidebar a.active { 
-      background: #34495e; color: white; border-left: 4px solid var(--accent-color); 
-    }
-
-    /* Content Area */
-    .main-content { margin-left: 240px; padding: 25px; }
-    .card { border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .hidden { display: none; }
-    
-    /* POS Styling */
-    .summary-card { 
-      background: white; padding: 20px; border-radius: 10px; 
-      border-right: 6px solid var(--accent-color);
-    }
-    #cart-table-wrapper { max-height: 350px; overflow-y: auto; }
-    .total-price { font-size: 2rem; font-weight: bold; color: #2c3e50; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Kasir Pro - POS Mandiri</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root { --primary: #2c3e50; --accent: #3498db; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Sidebar */
+        .sidebar { width: 250px; position: fixed; height: 100vh; background: var(--primary); color: white; transition: 0.3s; z-index: 100; }
+        .sidebar a { color: #bdc3c7; text-decoration: none; padding: 15px 20px; display: block; border-bottom: 1px solid #34495e; }
+        .sidebar a:hover, .sidebar a.active { background: #34495e; color: white; border-left: 5px solid var(--accent); }
+        
+        .main-content { margin-left: 250px; padding: 20px; transition: 0.3s; }
+        .card { border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-radius: 12px; }
+        .hidden { display: none; }
+        
+        /* POS Style */
+        #cart-list { max-height: 400px; overflow-y: auto; }
+        .total-display { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
+        
+        @media (max-width: 768px) {
+            .sidebar { margin-left: -250px; }
+            .main-content { margin-left: 0; }
+            .sidebar.active { margin-left: 0; }
+        }
+    </style>
 </head>
 <body>
 
-  <div class="sidebar">
-    <div class="sidebar-brand">
-      <img id="logoApp" src="
-"https://via.placeholder.com/60" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px;">
-      <h6 id="storeNameApp">Toko Kelontong</h6>
+    <div class="sidebar" id="sidebar">
+        <div class="p-4 text-center">
+            <div id="displayLogo" class="bg-light rounded-circle mx-auto mb-2" style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; color: #333;">LOGO</div>
+            <h5 id="displayNamaToko">Toko Saya</h5>
+        </div>
+        <nav>
+            <a href="#" onclick="showPage('transaksi')" class="nav-link-item active">🛒 Transaksi</a>
+            <a href="#" onclick="showPage('produk')" class="nav-link-item">📦 Kelola Produk</a>
+            <a href="#" onclick="showPage('stok')" class="nav-link-item">📉 Stok Opname</a>
+            <a href="#" onclick="showPage('setting')" class="nav-link-item">⚙️ Pengaturan</a>
+        </nav>
     </div>
-    <a href="#" onclick="switchPage('dashboard')">📊 Dashboard</a>
-    <a href="#" onclick="switchPage('transaksi')" class="active">🛒 Transaksi Kasir</a>
-    <a href="#" onclick="switchPage('stok')">📦 Kelola Stok</a>
-    <a href="#" onclick="switchPage('referensi')">📋 Referensi Produk</a>
-    <a href="#" onclick="switchPage('report')">📜 Report Penjualan</a>
-    <a href="#" onclick="switchPage('setting')">⚙️ Pengaturan</a>
-  </div>
 
-  <div class="main-content">
-    
-    <div id="page-transaksi" class="content-page">
-      <h4 class="mb-4">Kasir / Transaksi Baru</h4>
-      <div class="row">
+    <div class="main-content">
         
-        <div class="col-md-8">
-          <div class="card p-3 mb-3">
-            <div class="input-group mb-3">
-              <span class="input-group-text bg-white">📸</span>
-              <input type="text" id="barcodeScanner" class="form-control form-control-lg" 
-                     placeholder="Scan Barcode / Ketik Kode Barang lalu Enter...">
+        <div id="page-transaksi" class="page-section">
+            <h3 class="mb-4">Kasir / Penjualan</h3>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card p-3 mb-3">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text bg-primary text-white">🔍 SCAN</span>
+                            <input type="text" id="scanInput" class="form-control form-control-lg" placeholder="Scan Barcode atau ketik kode barang...">
+                        </div>
+                        <div id="cart-list">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Produk</th><th>Harga</th><th width="120">Qty</th><th>Subtotal</th><th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cartTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card p-4 text-end mb-3">
+                        <span class="text-muted small">Grand Total</span>
+                        <div class="total-display" id="grandTotalText">Rp 0</div>
+                    </div>
+
+                    <div class="card p-3">
+                        <label class="fw-bold mb-2">Pembayaran</label>
+                        <select id="payMethod" class="form-select mb-3" onchange="togglePayUI()">
+                            <option value="CASH">Tunai (Cash)</option>
+                            <option value="QRIS">QRIS (Full)</option>
+                            <option value="SPLIT">Split (Cash + QRIS)</option>
+                        </select>
+
+                        <div id="uiCash">
+                            <label class="small text-muted">Uang Tunai</label>
+                            <input type="number" id="inputTunai" class="form-control mb-3" oninput="calculatePayment()">
+                        </div>
+
+                        <div id="uiQris" class="hidden">
+                            <label class="small text-muted">E-Wallet</label>
+                            <select id="qrisProvider" class="form-select mb-2">
+                                <option>DANA</option><option>OVO</option><option>GoPay</option><option>ShopeePay</option>
+                            </select>
+                            <input type="number" id="inputQris" class="form-control mb-3" readonly>
+                        </div>
+
+                        <div class="d-flex justify-content-between border-top pt-3">
+                            <span class="fw-bold">Kembali:</span>
+                            <span id="textKembalian" class="fw-bold text-success">Rp 0</span>
+                        </div>
+                        <button class="btn btn-primary w-100 py-3 mt-3 shadow fw-bold" onclick="finishTransaction()">SIMPAN & CETAK</button>
+                    </div>
+                </div>
             </div>
-            
-            <div id="cart-table-wrapper">
-              <table class="table align-middle" id="cartTable">
-                <thead class="table-light">
-                  <tr>
-                    <th>Produk</th><th>Harga</th><th width="120">Jumlah</th><th>Subtotal</th><th>#</th>
-                  </tr>
-                </thead>
-                <tbody id="cartBody">
-                  </tbody>
-              </table>
-            </div>
-            <div class="mt-3">
-              <button class="btn btn-outline-secondary btn-sm" onclick="resetTransaksi()">Refresh / Reset</button>
-            </div>
-          </div>
         </div>
 
-        <div class="col-md-4">
-          <div class="summary-card mb-3 text-end">
-            <span class="text-muted">Total Belanja</span>
-            <div class="total-price" id="textGrandTotal">Rp 0</div>
-          </div>
-
-          <div class="card p-3">
-            <label class="fw-bold mb-2">Metode Pembayaran</label>
-            <select id="payMethod" class="form-select mb-3" onchange="togglePaymentFields()">
-              <option value="CASH">Tunai (Cash)</option>
-              <option value="QRIS">QRIS</option>
-              <option value="SPLIT">Split (Cash + QRIS)</option>
-            </select>
-
-            <div id="groupCash">
-              <label class="text-muted small">Uang Tunai</label>
-              <input type="number" id="inputCash" class="form-control mb-2" oninput="hitungKembalian()">
+        <div id="page-produk" class="page-section hidden">
+            <h3>Daftar Referensi Produk</h3>
+            <div class="card p-3">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3"><input type="text" id="pBarcode" class="form-control" placeholder="Barcode"></div>
+                    <div class="col-md-3"><input type="text" id="pNama" class="form-control" placeholder="Nama Produk"></div>
+                    <div class="col-md-2"><input type="number" id="pBeli" class="form-control" placeholder="Harga Beli"></div>
+                    <div class="col-md-2"><input type="number" id="pJual" class="form-control" placeholder="Harga Jual"></div>
+                    <div class="col-md-2"><button class="btn btn-success w-100" onclick="saveNewProduct()">Tambah</button></div>
+                </div>
+                <table class="table table-bordered">
+                    <thead><tr><th>Barcode</th><th>Nama</th><th>Beli</th><th>Jual</th><th>Aksi</th></tr></thead>
+                    <tbody id="productTableBody"></tbody>
+                </table>
             </div>
-
-            <div id="groupQris" class="hidden">
-              <label class="text-muted small">Pilih QRIS</label>
-              <select id="selectQris" class="form-select mb-2">
-                <option>ShopeePay</option><option>GoPay</option><option>OVO</option><option>Dana</option>
-              </select>
-              <label class="text-muted small">Nominal QRIS</label>
-              <input type="number" id="inputQris" class="form-control mb-2" readonly>
-            </div>
-
-            <hr>
-            <div class="d-flex justify-content-between">
-              <span class="fw-bold">Kembalian:</span>
-              <span class="fw-bold text-success" id="textKembalian">Rp 0</span>
-            </div>
-            <button class="btn btn-primary w-100 py-3 mt-3 shadow" onclick="simpanKeDatabase()">
-               SIMPAN & CETAK STRUK
-            </button>
-          </div>
         </div>
 
-      </div>
     </div>
 
-    <div id="page-stok" class="content-page hidden"><h4>Menu Kelola Stok</h4><p>Fitur dalam pengembangan...</p></div>
-    <div id="page-dashboard" class="content-page hidden"><h4>Dashboard Analisa</h4><p>Grafik profit akan tampil di sini.</p></div>
+    <script>
+        // DATA STORAGE (Simulasi Database)
+        let dbProduk = JSON.parse(localStorage.getItem('pos_produk')) || [];
+        let keranjang = [];
+        let grandTotal = 0;
 
-  </div>
+        // 1. Inisialisasi Halaman
+        function showPage(pageId) {
+            document.querySelectorAll('.page-section').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-' + pageId).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-link-item').forEach(a => a.classList.remove('active'));
+            event.currentTarget.classList.add('active');
 
-  <script>
-    let keranjang = [];
-    let totalBelanja = 0;
+            if(pageId === 'produk') renderProductTable();
+        }
 
-    // 1. Inisialisasi: Ambil Nama Toko & Logo
-    window.onload = () => {
-      google.script.run.withSuccessHandler(settings => {
-        document.getElementById('storeNameApp').innerText = settings.namaToko;
-        document.getElementById('logoApp').src = settings.logoUrl;
-      }).getSettings();
-    };
-
-    // 2. Navigasi Halaman
-    function switchPage(pageId) {
-      document.querySelectorAll('.content-page').forEach(p => p.classList.add('hidden'));
-      document.getElementById('page-' + pageId).classList.remove('hidden');
-      
-      // Update Menu Active
-      document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-      event.currentTarget.classList.add('active');
-    }
-
-    // 3. Logika Scan Barcode
-    document.getElementById('barcodeScanner').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        let code = e.target.value;
-        if (!code) return;
-
-        // Panggil fungsi di Kode.gs untuk cari barang
-        google.script.run.withSuccessHandler(barang => {
-          if (barang) {
-            tambahKeKeranjang(barang);
-          } else {
-            alert("Barang Tidak Ditemukan!");
-          }
-          e.target.value = ''; // Kosongkan input setelah scan
-        }).getProductData(code);
-      }
-    });
-
-    // 4. Tambah Barang ke Keranjang
-    function tambahKeKeranjang(barang) {
-      // Cek apakah barang sudah ada (logika update qty)
-      let itemAda = keranjang.find(i => i.nama === barang.nama);
-      
-      if (itemAda) {
-        itemAda.qty += 1;
-        itemAda.total = itemAda.qty * itemAda.jual;
-      } else {
-        keranjang.push({
-          barcode: barang.barcode,
-          nama: barang.nama,
-          jual: barang.jual,
-          qty: 1,
-          total: barang.jual
+        // 2. Transaksi: Scan Barcode
+        document.getElementById('scanInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                let code = this.value;
+                let found = dbProduk.find(p => p.barcode === code);
+                
+                if (found) {
+                    addToCart(found);
+                } else {
+                    alert("Produk tidak ditemukan! Daftarkan dulu di menu Kelola Produk.");
+                }
+                this.value = '';
+            }
         });
-      }
-      renderTampilanKeranjang();
-    }
 
-    // 5. Update Tampilan Tabel
-    function renderTampilanKeranjang() {
-      let html = '';
-      totalBelanja = 0;
+        function addToCart(item) {
+            let exist = keranjang.find(i => i.nama === item.nama);
+            if (exist) {
+                exist.qty++;
+                exist.total = exist.qty * exist.jual;
+            } else {
+                keranjang.push({ ...item, qty: 1, total: parseInt(item.jual) });
+            }
+            renderCart();
+        }
 
-      keranjang.forEach((item, index) => {
-        totalBelanja += item.total;
-        html += `
-          <tr>
-            <td><strong>${item.nama}</strong></td>
-            <td>${item.jual.toLocaleString('id-ID')}</td>
-            <td>
-              <div class="input-group input-group-sm">
-                <button class="btn btn-outline-secondary" onclick="ubahQty(${index}, -1)">-</button>
-                <input type="text" class="form-control text-center" value="${item.qty}" readonly>
-                <button class="btn btn-outline-secondary" onclick="ubahQty(${index}, 1)">+</button>
-              </div>
-            </td>
-            <td>${item.total.toLocaleString('id-ID')}</td>
-            <td><button class="btn btn-sm text-danger" onclick="hapusItem(${index})">🗑️</button></td>
-          </tr>`;
-      });
+        function renderCart() {
+            let html = '';
+            grandTotal = 0;
+            keranjang.forEach((item, index) => {
+                grandTotal += item.total;
+                html += `<tr>
+                    <td>${item.nama}</td>
+                    <td>Rp ${parseInt(item.jual).toLocaleString()}</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <button class="btn btn-outline-secondary" onclick="updateQty(${index}, -1)">-</button>
+                            <input type="text" class="form-control text-center" value="${item.qty}" readonly>
+                            <button class="btn btn-outline-secondary" onclick="updateQty(${index}, 1)">+</button>
+                        </div>
+                    </td>
+                    <td>Rp ${item.total.toLocaleString()}</td>
+                    <td class="text-danger" style="cursor:pointer" onclick="removeItem(${index})">✕</td>
+                </tr>`;
+            });
+            document.getElementById('cartTableBody').innerHTML = html;
+            document.getElementById('grandTotalText').innerText = "Rp " + grandTotal.toLocaleString();
+            calculatePayment();
+        }
 
-      document.getElementById('cartBody').innerHTML = html;
-      document.getElementById('textGrandTotal').innerText = "Rp " + totalBelanja.toLocaleString('id-ID');
-      hitungKembalian(); // Update otomatis potongan split bill
-    }
+        // 3. Pembayaran Logic
+        function togglePayUI() {
+            let m = document.getElementById('payMethod').value;
+            document.getElementById('uiCash').className = (m === 'QRIS' ? 'hidden' : '');
+            document.getElementById('uiQris').className = (m === 'CASH' ? 'hidden' : '');
+            calculatePayment();
+        }
 
-    // 6. Logika Pembayaran & Split Bill
-    function togglePaymentFields() {
-      let metode = document.getElementById('payMethod').value;
-      document.getElementById('groupCash').classList.toggle('hidden', metode === 'QRIS');
-      document.getElementById('groupQris').classList.toggle('hidden', metode === 'CASH');
-      hitungKembalian();
-    }
+        function calculatePayment() {
+            let method = document.getElementById('payMethod').value;
+            let tunai = parseFloat(document.getElementById('inputTunai').value) || 0;
+            let qrisInput = document.getElementById('inputQris');
+            let kembalianText = document.getElementById('textKembalian');
 
-    function hitungKembalian() {
-      let metode = document.getElementById('payMethod').value;
-      let tunai = parseFloat(document.getElementById('inputCash').value) || 0;
-      let qrisInput = document.getElementById('inputQris');
-      let kembalianText = document.getElementById('textKembalian');
+            if (method === 'SPLIT') {
+                let sisa = grandTotal - tunai;
+                qrisInput.value = sisa > 0 ? sisa : 0;
+                let lebih = tunai - grandTotal;
+                kembalianText.innerText = "Rp " + (lebih > 0 ? lebih.toLocaleString() : 0);
+            } else if (method === 'CASH') {
+                let kembalian = tunai - grandTotal;
+                kembalianText.innerText = "Rp " + (kembalian > 0 ? kembalian.toLocaleString() : 0);
+            } else {
+                qrisInput.value = grandTotal;
+                kembalianText.innerText = "Rp 0";
+            }
+        }
 
-      if (metode === 'SPLIT') {
-        let sisaTagihan = totalBelanja - tunai;
-        qrisInput.value = sisaTagihan > 0 ? sisaTagihan : 0;
-        let lebih = tunai - totalBelanja;
-        kembalianText.innerText = "Rp " + (lebih > 0 ? lebih.toLocaleString('id-ID') : 0);
-      } else if (metode === 'CASH') {
-        let kembalian = tunai - totalBelanja;
-        kembalianText.innerText = "Rp " + (kembalian > 0 ? kembalian.toLocaleString('id-ID') : 0);
-      } else {
-        qrisInput.value = totalBelanja;
-        kembalianText.innerText = "Rp 0";
-      }
-    }
+        // 4. Manajemen Produk (Database Lokal)
+        function saveNewProduct() {
+            let bar = document.getElementById('pBarcode').value;
+            let nam = document.getElementById('pNama').value;
+            let bel = document.getElementById('pBeli').value;
+            let jua = document.getElementById('pJual').value;
 
-    // 7. Simpan Transaksi Ke Google Sheets
-    function simpanKeDatabase() {
-      if (keranjang.length === 0) return alert("Keranjang masih kosong!");
+            if(!bar || !nam) return alert("Isi Barcode dan Nama!");
+            
+            dbProduk.push({ barcode: bar, nama: nam, beli: bel, jual: jua });
+            localStorage.setItem('pos_produk', JSON.stringify(dbProduk));
+            
+            alert("Produk Tersimpan!");
+            document.getElementById('pBarcode').value = '';
+            document.getElementById('pNama').value = '';
+            renderProductTable();
+        }
 
-      let dataPembayaran = {
-        items: keranjang,
-        metode: document.getElementById('payMethod').value,
-        cash: document.getElementById('inputCash').value,
-        qris: document.getElementById('inputQris').value,
-        tipeQris: document.getElementById('selectQris').value
-      };
+        function renderProductTable() {
+            let h = '';
+            dbProduk.forEach((p, index) => {
+                h += `<tr>
+                    <td>${p.barcode}</td><td>${p.nama}</td>
+                    <td>${p.beli}</td><td>${p.jual}</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="delProd(${index})">Hapus</button></td>
+                </tr>`;
+            });
+            document.getElementById('productTableBody').innerHTML = h;
+        }
 
-      google.script.run.withSuccessHandler(respon => {
-        alert(respon);
-        resetTransaksi();
-      }).processFinalTransaction(dataPembayaran);
-    }
+        function delProd(i) {
+            dbProduk.splice(i, 1);
+            localStorage.setItem('pos_produk', JSON.stringify(dbProduk));
+            renderProductTable();
+        }
 
-    function ubahQty(index, n) {
-      if (keranjang[index].qty + n > 0) {
-        keranjang[index].qty += n;
-        keranjang[index].total = keranjang[index].qty * keranjang[index].jual;
-        renderTampilanKeranjang();
-      }
-    }
+        function updateQty(i, n) {
+            if(keranjang[i].qty + n > 0) {
+                keranjang[i].qty += n;
+                keranjang[i].total = keranjang[i].qty * keranjang[i].jual;
+                renderCart();
+            }
+        }
 
-    function hapusItem(index) {
-      keranjang.splice(index, 1);
-      renderTampilanKeranjang();
-    }
+        function removeItem(i) { keranjang.splice(i,1); renderCart(); }
 
-    function resetTransaksi() {
-      keranjang = [];
-      document.getElementById('inputCash').value = '';
-      renderTampilanKeranjang();
-    }
-  </script>
+        function finishTransaction() {
+            if(keranjang.length === 0) return alert("Keranjang kosong!");
+            alert("Transaksi Berhasil!\nTotal: Rp " + grandTotal.toLocaleString());
+            keranjang = [];
+            document.getElementById('inputTunai').value = '';
+            renderCart();
+        }
+    </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
