@@ -6,7 +6,8 @@
     <title>ProPOS Custom v1.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; color: #f1f5f9; overflow: hidden; }
@@ -137,55 +138,59 @@ function renderDashboard(div) {
 }
 
 // 4. FUNGSI REFERENSI (Halaman yang Bos minta)
-function renderReferensi(div) {
-    div.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
-            <div class="stat-card h-fit border-t-4 border-indigo-500">
-                <h3 id="form-title" class="text-xs font-black text-indigo-400 uppercase mb-6 flex items-center gap-2"><i data-lucide="plus-circle" class="w-4"></i> Tambah / Edit Produk</h3>
-                <div class="space-y-4">
-                    <input type="hidden" id="edit-index" value="-1">
-                    <div>
-                        <label class="text-[10px] text-slate-500 font-bold uppercase">Nama Produk</label>
-                        <input id="ref-nama" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-indigo-500 uppercase">
-                    </div>
-                    <div>
-                        <label class="text-[10px] text-slate-500 font-bold uppercase">Barcode</label>
-                        <div class="flex gap-2">
-                            <input id="ref-bc" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none">
-                            <button class="bg-indigo-600 p-3 rounded-xl"><i data-lucide="scan-line" class="w-5 h-5"></i></button>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-[10px] text-slate-500 font-bold uppercase">Harga Beli</label><input id="ref-beli" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-green-400 font-bold"></div>
-                        <div><label class="text-[10px] text-slate-500 font-bold uppercase">Harga Jual</label><input id="ref-jual" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-indigo-400 font-bold"></div>
-                    </div>
-                    <div class="pt-4 flex gap-2">
-                        <button onclick="batalEdit()" class="flex-1 bg-slate-800 py-3 rounded-xl text-xs font-bold">BATAL</button>
-                        <button onclick="simpanRef()" class="flex-[2] bg-indigo-600 py-3 rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 uppercase">Simpan & Update</button>
-                    </div>
-                </div>
-            </div>
 
-            <div class="lg:col-span-2 space-y-6">
-                <div class="flex gap-4">
-                    <div class="relative flex-1">
-                        <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-500"></i>
-                        <input id="search-ref" oninput="filterRef(this.value)" placeholder="Cari nama produk..." class="bg-slate-800/50 border border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-xs w-full outline-none">
-                    </div>
-                </div>
-                <div class="stat-card overflow-hidden p-0">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-slate-900/50 text-slate-500 uppercase font-black"><tr class="border-b border-slate-800">
-                            <th class="p-4">Produk</th><th class="p-4">Beli</th><th class="p-4">Jual</th><th class="p-4 text-center">Aksi</th>
-                        </tr></thead>
-                        <tbody id="table-ref-body"></tbody>
-                    </table>
-                </div>
+// Fungsi untuk memunculkan Scanner
+function startScanBc(targetInputId) {
+    // Buat area kamera muncul di layar (Overlay)
+    const scanModal = document.createElement('div');
+    scanModal.id = 'scanner-overlay';
+    scanModal.className = 'fixed inset-0 bg-black/90 z-[999] flex flex-col items-center justify-center p-6';
+    scanModal.innerHTML = `
+        <div class="w-full max-w-md bg-slate-900 rounded-3xl overflow-hidden border border-slate-700 shadow-2xl">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-xs font-black uppercase text-indigo-400">Scan Barcode Produk</h3>
+                <button onclick="stopScan()" class="text-slate-500 hover:text-white"><i data-lucide="x"></i></button>
+            </div>
+            <div id="reader" class="w-full bg-black"></div>
+            <div class="p-6 text-center">
+                <p class="text-[10px] text-slate-500 uppercase tracking-widest">Arahkan kamera ke barcode barang</p>
             </div>
         </div>
     `;
-    loadTableRef();
+    document.body.appendChild(scanModal);
     lucide.createIcons();
+
+    const html5QrCode = new Html5Qrcode("reader");
+    window.scannerObj = html5QrCode; // Simpan ke global agar bisa dimatikan
+
+    const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+    html5QrCode.start(
+        { facingMode: "environment" }, // Pakai kamera belakang
+        config,
+        (decodedText) => {
+            // Jika berhasil scan
+            document.getElementById(targetInputId).value = decodedText;
+            stopScan(); // Matikan kamera
+            alert("Barcode Terdeteksi: " + decodedText);
+        },
+        (errorMessage) => { /* ignore error nyari barcode */ }
+    ).catch(err => {
+        alert("Gagal akses kamera: " + err);
+        stopScan();
+    });
+}
+
+function stopScan() {
+    if (window.scannerObj) {
+        window.scannerObj.stop().then(() => {
+            const overlay = document.getElementById('scanner-overlay');
+            if (overlay) overlay.remove();
+        });
+    } else {
+        const overlay = document.getElementById('scanner-overlay');
+        if (overlay) overlay.remove();
+    }
 }
 
 // 5. FUNGSI LOGIKA DATA REFERENSI
