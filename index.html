@@ -59,66 +59,33 @@
     </main>
 
     <script>
-        // Data Initialization
-        let db_cfg = JSON.parse(localStorage.getItem('db_cfg')) || { name: "MY STORE", logo: "" };
-        
-        // Fungsi Ganti Logo
-        function gantiLogo(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('logo-toko').src = e.target.result;
-                    db_cfg.logo = e.target.result;
-                    saveCfg();
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
+           // 1. DATA INITIALIZATION
+let db_cfg = JSON.parse(localStorage.getItem('db_cfg')) || { name: "MY STORE", logo: "" };
+let db_ref = JSON.parse(localStorage.getItem('db_ref')) || [];
+let db_sales = JSON.parse(localStorage.getItem('db_sales')) || [];
+let db_stok = JSON.parse(localStorage.getItem('db_stok')) || {};
 
-        function saveCfg() { localStorage.setItem('db_cfg', JSON.stringify(db_cfg)); }
+// 2. FUNGSI UTAMA NAVIGASI
+function gantiMenu(menu) {
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+    document.getElementById('m-' + menu).classList.add('active');
+    document.getElementById('judul-halaman').innerText = menu.replace('-', ' ');
 
-        // Fungsi Ganti Menu
-        function gantiMenu(menu) {
-            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-            document.getElementById('m-' + menu).classList.add('active');
-            document.getElementById('judul-halaman').innerText = menu;
-
-            const target = document.getElementById('konten-utama');
-            if(menu === 'dashboard') renderDashboard(target);
-            else target.innerHTML = `<div class="h-full flex items-center justify-center opacity-10 font-black text-4xl italic uppercase">Menu ${menu}</div>`;
-            lucide.createIcons();
-        }
-// Taruh di dalam tag <script>
-function handleLogoUpload(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            // Ganti gambar di layar
-            document.getElementById('logo-toko-img').src = e.target.result;
-            
-            // Simpan ke LocalStorage supaya tidak hilang saat refresh
-            let cfg = JSON.parse(localStorage.getItem('db_cfg')) || {};
-            cfg.logo = e.target.result;
-            localStorage.setItem('db_cfg', JSON.stringify(cfg));
-            
-            alert("Logo Berhasil Diupdate!");
-        };
-        reader.readAsDataURL(input.files[0]);
+    const target = document.getElementById('konten-utama');
+    
+    // Logika Pemanggil Halaman
+    if (menu === 'dashboard') {
+        renderDashboard(target);
+    } else if (menu === 'referensi') {
+        renderReferensi(target);
+    } else {
+        target.innerHTML = `<div class="h-full flex items-center justify-center opacity-10 font-black text-4xl italic uppercase">Menu ${menu} Segera Hadir</div>`;
     }
+    lucide.createIcons();
 }
 
-// Pastikan bagian window.onload diubah jadi seperti ini:
-window.onload = () => {
-    const savedCfg = JSON.parse(localStorage.getItem('db_cfg'));
-    if(savedCfg) {
-        if(savedCfg.name) document.getElementById('nama-toko-side').innerText = savedCfg.name;
-        if(savedCfg.logo) document.getElementById('logo-toko-img').src = savedCfg.logo;
-    }
-    gantiMenu('dashboard');
-};
-        
-        // --- RENDER DASHBOARD ANALITIK ---
-        function renderDashboard(div) {
+// 3. FUNGSI DASHBOARD
+function renderDashboard(div) {
     div.innerHTML = `
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
@@ -134,150 +101,47 @@ window.onload = () => {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div class="stat-card border-l-4 border-indigo-500 bg-gradient-to-br from-indigo-500/10 to-transparent">
                 <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Total Profit Bersih</p>
-                        <h2 id="v-profit" class="text-3xl font-black mt-1">Rp 0</h2>
-                    </div>
+                    <div><p class="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Total Profit Bersih</p><h2 id="v-profit" class="text-3xl font-black mt-1">Rp 0</h2></div>
                     <div class="bg-indigo-500/20 p-2 rounded-lg text-indigo-400"><i data-lucide="trending-up"></i></div>
                 </div>
             </div>
-
             <div class="stat-card border-l-4 border-pink-500 bg-gradient-to-br from-pink-500/10 to-transparent">
                 <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-[10px] font-black text-pink-400 uppercase tracking-tighter">Total Rugi (Rusak/Hilang)</p>
-                        <h2 id="v-rugi" class="text-3xl font-black mt-1 text-pink-500">Rp 0</h2>
-                    </div>
+                    <div><p class="text-[10px] font-black text-pink-400 uppercase tracking-tighter">Total Rugi (Rusak/Hilang)</p><h2 id="v-rugi" class="text-3xl font-black mt-1 text-pink-500">Rp 0</h2></div>
                     <div class="bg-pink-500/20 p-2 rounded-lg text-pink-400"><i data-lucide="alert-circle"></i></div>
                 </div>
             </div>
         </div>
 
         <div class="stat-card mb-8">
-            <h3 class="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest flex items-center gap-2">
-                <i data-lucide="bar-chart-3" class="w-4"></i> Report Penjualan (Grafik)
-            </h3>
+            <h3 class="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-4"></i> Report Penjualan (Grafik)</h3>
             <div class="h-64"><canvas id="chartUtama"></canvas></div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="stat-card border-t-4 border-indigo-500">
                 <h4 class="text-[10px] font-black text-indigo-400 uppercase mb-4 flex items-center gap-2"><i data-lucide="trophy" class="w-3"></i> Top 3 Terlaris</h4>
-                <div class="space-y-3 text-xs" id="box-terlaris"></div>
+                <div class="space-y-3 text-xs" id="box-terlaris"><p class="opacity-20 italic text-[10px]">Belum ada data</p></div>
             </div>
-
             <div class="stat-card border-t-4 border-pink-500">
                 <h4 class="text-[10px] font-black text-pink-400 uppercase mb-4 flex items-center gap-2"><i data-lucide="frown" class="w-3"></i> 3 Tidak Laku</h4>
-                <div class="space-y-3 text-xs" id="box-tidak-laku"></div>
+                <div class="space-y-3 text-xs" id="box-tidak-laku"><p class="opacity-20 italic text-[10px]">Belum ada data</p></div>
             </div>
-
             <div class="stat-card lg:col-span-2">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase mb-4 flex justify-between">
-                    <span>Barang Terjual</span>
-                    <span id="count-terjual" class="text-indigo-400">0 Items</span>
-                </h4>
-                <div class="max-h-32 overflow-y-auto space-y-2 pr-2 text-[11px]" id="box-semua-terjual"></div>
+                <h4 class="text-[10px] font-black text-slate-400 uppercase mb-4 flex justify-between"><span>Barang Terjual</span><span id="count-terjual" class="text-indigo-400">0 Items</span></h4>
+                <div class="max-h-32 overflow-y-auto space-y-2 pr-2 text-[11px]" id="box-semua-terjual"><p class="opacity-20 italic">Belum ada transaksi</p></div>
             </div>
         </div>
     `;
-    updateDashboardByFilter(); // Panggil fungsi hitung data
-}
-        
-        function initChart() {
-            const ctx = document.getElementById('chartUtama').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['01/04', '02/04', '03/04', '04/04', '05/04', '06/04', '07/04'],
-                    datasets: [{
-                        label: 'Penjualan',
-                        data: [0, 0, 0, 0, 0, 0, 0],
-                        borderColor: '#6366f1',
-                        borderWidth: 4,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        fill: true,
-                        backgroundColor: 'rgba(99, 102, 241, 0.05)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#475569', size: 10 } },
-                        x: { grid: { display: false }, ticks: { color: '#475569', size: 10 } }
-                    }
-                }
-            });
-        }
-
-        // Update Jam & Init
-        setInterval(() => { document.getElementById('jam').innerText = new Date().toLocaleString(); }, 1000);
-        window.onload = () => {
-            document.getElementById('nama-toko-side').innerText = db_cfg.name;
-            if(db_cfg.logo) document.getElementById('logo-toko').src = db_cfg.logo;
-            gantiMenu('dashboard');
-        };
-        function updateDashboardByFilter() {
-    const tglFilter = document.getElementById('f-tgl').value;
-    const info = document.getElementById('filter-info');
-    
-    // 1. Ambil Data dari Database
-    let sales = JSON.parse(localStorage.getItem('db_sales')) || [];
-    let stok = JSON.parse(localStorage.getItem('db_stok')) || {};
-    let ref = JSON.parse(localStorage.getItem('db_ref')) || [];
-
-    // 2. Filter data berdasarkan tanggal (jika ada)
-    if(tglFilter) {
-        // Asumsi format tanggal di db_sales adalah "YYYY-MM-DD" atau string Date
-        sales = sales.filter(s => s.tgl.includes(tglFilter));
-        info.innerText = "Menampilkan Data Tanggal: " + tglFilter;
-    } else {
-        info.innerText = "Menampilkan Semua Data (Keseluruhan)";
-    }
-
-    // 3. Hitung Total Profit (Penjualan - Modal)
-    let totalProfit = 0;
-    sales.forEach(trx => {
-        totalProfit += trx.total; // Jika db_sales menyimpan total bersih
-    });
-
-    // 4. Hitung Total Rugi (Barang Rusak/Hilang x Harga Beli)
-    let totalRugi = 0;
-    Object.keys(stok).forEach(namaBarang => {
-        const itemStok = stok[namaBarang];
-        const itemRef = ref.find(r => r.nama === namaBarang);
-        if(itemRef) {
-            const jmlRugi = (itemStok.rusak || 0) + (itemStok.hilang || 0);
-            totalRugi += (jmlRugi * itemRef.beli); 
-        }
-    });
-
-    // 5. Update ke Layar
-    document.getElementById('v-profit').innerText = fmtRp(totalProfit);
-    document.getElementById('v-rugi').innerText = fmtRp(totalRugi);
-    
-    // 6. Jalankan ulang ikon Lucide
-    lucide.createIcons();
-    
-    // (Tambahkan logika pengisian Top 3 di sini nanti)
-    renderTop3(sales, ref);
-}
-
-function resetFilter() {
-    document.getElementById('f-tgl').value = "";
     updateDashboardByFilter();
-                } 
+}
 
-        // --- RENDER REFENSI ---
+// 4. FUNGSI REFERENSI (Halaman yang Bos minta)
 function renderReferensi(div) {
     div.innerHTML = `
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
             <div class="stat-card h-fit border-t-4 border-indigo-500">
-                <h3 id="form-title" class="text-xs font-black text-indigo-400 uppercase mb-6 flex items-center gap-2">
-                    <i data-lucide="plus-circle" class="w-4"></i> Tambah / Edit Produk
-                </h3>
+                <h3 id="form-title" class="text-xs font-black text-indigo-400 uppercase mb-6 flex items-center gap-2"><i data-lucide="plus-circle" class="w-4"></i> Tambah / Edit Produk</h3>
                 <div class="space-y-4">
                     <input type="hidden" id="edit-index" value="-1">
                     <div>
@@ -288,24 +152,16 @@ function renderReferensi(div) {
                         <label class="text-[10px] text-slate-500 font-bold uppercase">Barcode</label>
                         <div class="flex gap-2">
                             <input id="ref-bc" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none">
-                            <button onclick="startScanBc('ref-bc')" class="bg-indigo-600 p-3 rounded-xl hover:bg-indigo-500 transition">
-                                <i data-lucide="scan-line" class="w-5 h-5"></i>
-                            </button>
+                            <button class="bg-indigo-600 p-3 rounded-xl"><i data-lucide="scan-line" class="w-5 h-5"></i></button>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-[10px] text-slate-500 font-bold uppercase">Harga Beli</label>
-                            <input id="ref-beli" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-green-500 font-bold text-green-400">
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-slate-500 font-bold uppercase">Harga Jual</label>
-                            <input id="ref-jual" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-indigo-500 font-bold text-indigo-400">
-                        </div>
+                        <div><label class="text-[10px] text-slate-500 font-bold uppercase">Harga Beli</label><input id="ref-beli" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-green-400 font-bold"></div>
+                        <div><label class="text-[10px] text-slate-500 font-bold uppercase">Harga Jual</label><input id="ref-jual" type="number" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-indigo-400 font-bold"></div>
                     </div>
                     <div class="pt-4 flex gap-2">
-                        <button onclick="batalEdit()" class="flex-1 bg-slate-800 py-3 rounded-xl text-xs font-bold hover:bg-slate-700">BATAL</button>
-                        <button id="btn-save-ref" onclick="simpanRef()" class="flex-[2] bg-indigo-600 py-3 rounded-xl text-xs font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-500/20">SIMPAN DATA</button>
+                        <button onclick="batalEdit()" class="flex-1 bg-slate-800 py-3 rounded-xl text-xs font-bold">BATAL</button>
+                        <button onclick="simpanRef()" class="flex-[2] bg-indigo-600 py-3 rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 uppercase">Simpan & Update</button>
                     </div>
                 </div>
             </div>
@@ -314,68 +170,37 @@ function renderReferensi(div) {
                 <div class="flex gap-4">
                     <div class="relative flex-1">
                         <i data-lucide="search" class="absolute left-4 top-3 w-4 h-4 text-slate-500"></i>
-                        <input id="search-ref" oninput="filterRef(this.value)" placeholder="Cari nama produk atau barcode..." class="bg-slate-800/50 border border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-xs w-full outline-none">
-                    </div>
-                    <button onclick="gantiMenu('referensi')" class="bg-slate-800 p-3 rounded-2xl border border-slate-700 hover:bg-slate-700">
-                        <i data-lucide="refresh-cw" class="w-5 h-5 text-slate-400"></i>
-                    </button>
-                </div>
-
-                <div class="stat-card overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-900/50 text-slate-500 uppercase font-black">
-                                <tr>
-                                    <th class="p-4">Produk</th>
-                                    <th class="p-4">Beli</th>
-                                    <th class="p-4">Jual</th>
-                                    <th class="p-4 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-ref-body"></tbody>
-                        </table>
+                        <input id="search-ref" oninput="filterRef(this.value)" placeholder="Cari nama produk..." class="bg-slate-800/50 border border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-xs w-full outline-none">
                     </div>
                 </div>
-
-                <div class="stat-card border-t-4 border-t-green-500">
-                    <h3 class="text-[10px] font-black text-green-500 uppercase mb-4">Metode Bayar Aktif</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="bg-green-500/10 text-green-400 px-3 py-1 rounded-lg border border-green-500/20 text-[10px] font-bold">CASH</span>
-                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">QRIS SHOPEEPAY</span>
-                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">OVO</span>
-                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">DANA</span>
-                        <span class="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-lg border border-indigo-500/20 text-[10px] font-bold">LINK AJA</span>
-                    </div>
+                <div class="stat-card overflow-hidden p-0">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/50 text-slate-500 uppercase font-black"><tr class="border-b border-slate-800">
+                            <th class="p-4">Produk</th><th class="p-4">Beli</th><th class="p-4">Jual</th><th class="p-4 text-center">Aksi</th>
+                        </tr></thead>
+                        <tbody id="table-ref-body"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
     `;
     loadTableRef();
     lucide.createIcons();
-} 
-    // Database Produk
-let db_ref = JSON.parse(localStorage.getItem('db_ref')) || [];
+}
 
+// 5. FUNGSI LOGIKA DATA REFERENSI
 function loadTableRef(data = null) {
     const list = data || db_ref;
     const body = document.getElementById('table-ref-body');
+    if(!body) return;
     body.innerHTML = list.map((p, i) => `
         <tr class="border-b border-slate-800/50 hover:bg-slate-800/20 transition">
-            <td class="p-4">
-                <div class="font-bold text-slate-200 uppercase">${p.nama}</div>
-                <div class="text-[10px] text-slate-500 font-mono italic">${p.bc || 'No Barcode'}</div>
-            </td>
-            <td class="p-4 font-mono text-green-400">${fmtRp(p.beli)}</td>
-            <td class="p-4 font-mono text-indigo-400">${fmtRp(p.jual)}</td>
-            <td class="p-4">
-                <div class="flex justify-center gap-2">
-                    <button onclick="editRef(${i})" class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg hover:bg-indigo-500 hover:text-white transition">
-                        <i data-lucide="pencil" class="w-4 h-4"></i>
-                    </button>
-                    <button onclick="hapusRef(${i})" class="p-2 bg-pink-500/10 text-pink-400 rounded-lg hover:bg-pink-500 hover:text-white transition">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                </div>
+            <td class="p-4"><div class="font-bold text-slate-200 uppercase">${p.nama}</div><div class="text-[10px] text-slate-500 font-mono">${p.bc || '-'}</div></td>
+            <td class="p-4 text-green-400 font-mono">${fmtRp(p.beli)}</td>
+            <td class="p-4 text-indigo-400 font-mono">${fmtRp(p.jual)}</td>
+            <td class="p-4 flex justify-center gap-2">
+                <button onclick="editRef(${i})" class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                <button onclick="hapusRef(${i})" class="p-2 bg-pink-500/10 text-pink-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </td>
         </tr>
     `).join('');
@@ -389,41 +214,31 @@ function simpanRef() {
     const beli = parseInt(document.getElementById('ref-beli').value) || 0;
     const jual = parseInt(document.getElementById('ref-jual').value) || 0;
 
-    if (!nama || !jual) return alert("Minimal isi Nama dan Harga Jual!");
+    if (!nama || !jual) return alert("Nama dan Harga Jual wajib diisi!");
 
     const dataBaru = { nama, bc, beli, jual };
 
-    if (idx === -1) {
-        // Tambah Baru
-        db_ref.push(dataBaru);
-        // Otomatis buatkan slot di stok jika belum ada
-        let stok = JSON.parse(localStorage.getItem('db_stok')) || {};
-        if(!stok[nama]) stok[nama] = { awal:0, masuk:0, laku:0, rusak:0, hilang:0 };
-        localStorage.setItem('db_stok', JSON.stringify(stok));
-    } else {
-        // Update data lama
-        db_ref[idx] = dataBaru;
-    }
+    if (idx === -1) db_ref.push(dataBaru);
+    else db_ref[idx] = dataBaru;
 
     localStorage.setItem('db_ref', JSON.stringify(db_ref));
-    alert("Data berhasil disimpan!");
+    alert("Berhasil Disimpan!");
     batalEdit();
     loadTableRef();
 }
 
 function editRef(i) {
     const item = db_ref[i];
-    document.getElementById('form-title').innerHTML = `<i data-lucide="pencil" class="w-4"></i> Edit Produk`;
     document.getElementById('edit-index').value = i;
     document.getElementById('ref-nama').value = item.nama;
     document.getElementById('ref-bc').value = item.bc;
     document.getElementById('ref-beli').value = item.beli;
     document.getElementById('ref-jual').value = item.jual;
-    lucide.createIcons();
+    document.getElementById('form-title').innerText = "Edit Produk";
 }
 
 function hapusRef(i) {
-    if (confirm("Hapus item ini selamanya?")) {
+    if(confirm("Hapus barang ini?")) {
         db_ref.splice(i, 1);
         localStorage.setItem('db_ref', JSON.stringify(db_ref));
         loadTableRef();
@@ -431,26 +246,51 @@ function hapusRef(i) {
 }
 
 function batalEdit() {
-    document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4"></i> Tambah / Edit Produk`;
     document.getElementById('edit-index').value = "-1";
     document.getElementById('ref-nama').value = "";
     document.getElementById('ref-bc').value = "";
     document.getElementById('ref-beli').value = "";
     document.getElementById('ref-jual').value = "";
-    lucide.createIcons();
+    document.getElementById('form-title').innerText = "Tambah / Edit Produk";
 }
 
 function filterRef(val) {
-    const hasil = db_ref.filter(p => 
-        p.nama.toLowerCase().includes(val.toLowerCase()) || 
-        p.bc.includes(val)
-    );
+    const hasil = db_ref.filter(p => p.nama.toLowerCase().includes(val.toLowerCase()));
     loadTableRef(hasil);
 }
 
-// Fungsi bantu Format Rupiah (Jika belum ada)
+// 6. FUNGSI PENDUKUNG (Logo, Filter, Jam, Chart)
+function handleLogoUpload(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('logo-toko-img').src = e.target.result;
+            db_cfg.logo = e.target.result;
+            localStorage.setItem('db_cfg', JSON.stringify(db_cfg));
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function updateDashboardByFilter() {
+    const vProfit = document.getElementById('v-profit');
+    if(vProfit) vProfit.innerText = "Rp 0";
+    // Logika hitung profit akan aktif jika sudah ada data transaksi
+}
+
 const fmtRp = (n) => "Rp " + new Intl.NumberFormat('id-ID').format(n);
 
+setInterval(() => { 
+    const jam = document.getElementById('jam');
+    if(jam) jam.innerText = new Date().toLocaleString(); 
+}, 1000);
+
+window.onload = () => {
+    if(db_cfg.logo) document.getElementById('logo-toko-img').src = db_cfg.logo;
+    document.getElementById('nama-toko-side').innerText = db_cfg.name;
+    gantiMenu('dashboard');
+};
+                            
     </script>
 </body>
 </html>
