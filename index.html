@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master POS Pro v4.0 - All-in-One</title>
+    <title>Master POS Pro v6.0 - Ultimate Edition</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -11,48 +11,31 @@
     <style>
         :root { --primary: #2c3e50; --accent: #3498db; --sidebar-width: 260px; }
         body { background-color: #f4f7f6; font-family: 'Inter', sans-serif; font-size: 13px; }
-        
-        /* Layout */
         .sidebar { width: var(--sidebar-width); position: fixed; height: 100vh; background: var(--primary); color: white; z-index: 1000; overflow-y: auto; }
         .sidebar-brand { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .sidebar a { color: #bdc3c7; text-decoration: none; padding: 12px 20px; display: block; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .sidebar a:hover, .sidebar a.active { background: #34495e; color: white; border-left: 5px solid var(--accent); }
         .main-content { margin-left: var(--sidebar-width); padding: 20px; min-height: 100vh; }
-        
-        /* UI Components */
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none; }
-        .total-banner { background: white; padding: 20px; border-radius: 12px; border-top: 5px solid var(--accent); }
-        .total-amount { font-size: 2rem; font-weight: 800; color: var(--primary); }
-        
-        /* Table Styles */
-        .table-stok th { background-color: #f8f9fa; font-size: 11px; text-transform: uppercase; }
-        .bg-sisa { background-color: #e3f2fd !important; font-weight: bold; color: #0d6efd; }
-        
-        /* Scanner Area */
+        .total-banner { background: white; padding: 20px; border-radius: 12px; border-top: 5px solid var(--accent); text-end; }
+        .total-amount { font-size: 2.5rem; font-weight: 800; color: var(--primary); }
         #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 12px; overflow: hidden; background: #000; }
-        
-        /* Print Area */
-        #receipt-preview-content { width: 80mm; background: white; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #ddd; margin: 0 auto; }
-        
-        @media print {
-            body * { visibility: hidden; }
-            #receipt-preview-content, #receipt-preview-content * { visibility: visible; }
-            #receipt-preview-content { position: absolute; left: 0; top: 0; width: 100%; border: none; }
-        }
+        #receipt-content { width: 80mm; background: white; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #ddd; margin: 0 auto; }
+        @media print { body * { visibility: hidden; } #receipt-content, #receipt-content * { visibility: visible; } #receipt-content { position: absolute; left: 0; top: 0; width: 100%; border: none; } }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
         <div class="sidebar-brand">
-            <img id="side-logo" src="https://via.placeholder.com/80" class="rounded-circle mb-2 shadow" style="width: 70px; height: 70px; object-fit: cover;">
+            <img id="side-logo" src="https://via.placeholder.com/80" class="rounded-circle mb-2 shadow" style="width: 60px; height: 60px; object-fit: cover;">
             <h5 id="side-store-name">Smart POS</h5>
         </div>
         <nav class="mt-2">
             <a href="#" onclick="showSection('dashboard')" class="nav-link active"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
             <a href="#" onclick="showSection('referensi')" class="nav-link"><i class="bi bi-tag me-2"></i> Referensi Produk</a>
-            <a href="#" onclick="showSection('kelola-stok')" class="nav-link"><i class="bi bi-archive me-2"></i> Kelola Stok</a>
+            <a href="#" onclick="showSection('stok')" class="nav-link"><i class="bi bi-archive me-2"></i> Kelola Stok</a>
             <a href="#" onclick="showSection('transaksi')" class="nav-link"><i class="bi bi-cart3 me-2"></i> Transaksi Kasir</a>
             <a href="#" onclick="showSection('setting')" class="nav-link"><i class="bi bi-gear me-2"></i> Settings</a>
         </nav>
@@ -68,117 +51,90 @@
         <div id="section-dashboard" class="section">
             <h3 class="mb-4">Dashboard Overview</h3>
             <div class="row g-3">
-                <div class="col-md-3"><div class="card p-3 bg-white text-dark"><h6>Item Terdaftar</h6><h2 id="dash-total-ref">0</h2></div></div>
-                <div class="col-md-3"><div class="card p-3 bg-primary text-white"><h6>Total Stok Fisik</h6><h2 id="dash-total-stok">0</h2></div></div>
-                <div class="col-md-3"><div class="card p-3 bg-danger text-white"><h6>Stok Habis</h6><h2 id="dash-out">0</h2></div></div>
-                <div class="col-md-3"><div class="card p-3 bg-warning text-dark"><h6>Stok Hampir Habis</h6><h2 id="dash-limit">0</h2></div></div>
+                <div class="col-md-4"><div class="card p-4 bg-white"><h6>Produk Terdaftar</h6><h2 id="dash-total-p">0</h2></div></div>
+                <div class="col-md-4"><div class="card p-4 bg-primary text-white"><h6>Total Stok Fisik</h6><h2 id="dash-total-s">0</h2></div></div>
+                <div class="col-md-4"><div class="card p-4 bg-danger text-white"><h6>Stok Habis</h6><h2 id="dash-out">0</h2></div></div>
             </div>
         </div>
 
         <div id="section-referensi" class="section hidden">
-            <h3>Referensi Produk</h3>
+            <h3><i class="bi bi-tag"></i> Referensi Produk</h3>
             <div class="card p-4">
                 <div class="row g-2 mb-3">
                     <input type="hidden" id="ref-edit-index" value="-1">
                     <div class="col-md-2">
-                        <div class="input-group">
-                            <input type="text" id="ref-barcode" class="form-control" placeholder="Barcode">
-                            <button class="btn btn-outline-primary" onclick="startScanner('ref-barcode')"><i class="bi bi-camera"></i></button>
-                        </div>
+                        <div class="input-group"><input type="text" id="ref-barcode" class="form-control" placeholder="Barcode"><button class="btn btn-primary" onclick="startScanner('ref-barcode')"><i class="bi bi-camera"></i></button></div>
                     </div>
                     <div class="col-md-3"><input type="text" id="ref-nama" class="form-control" placeholder="Nama Produk"></div>
                     <div class="col-md-2"><input type="number" id="ref-beli" class="form-control" placeholder="Hrg Beli"></div>
                     <div class="col-md-2"><input type="number" id="ref-jual" class="form-control" placeholder="Hrg Jual"></div>
                     <div class="col-md-3">
-                        <button id="btn-ref-save" class="btn btn-success w-100" onclick="saveReference()">Simpan Baru</button>
-                        <button id="btn-ref-update" class="btn btn-warning w-100 hidden" onclick="updateReference()">Update Data</button>
+                        <button id="btn-ref-save" class="btn btn-success w-100" onclick="saveRef()">Simpan Baru</button>
+                        <button id="btn-ref-update" class="btn btn-warning w-100 hidden" onclick="updateRef()">Update Data</button>
                     </div>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-dark">
-                            <tr><th>Barcode</th><th>Nama</th><th>Harga Beli</th><th>Harga Jual</th><th>Aksi</th></tr>
-                        </thead>
-                        <tbody id="ref-table-body"></tbody>
-                    </table>
-                </div>
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark"><tr><th>Barcode</th><th>Nama</th><th>Harga Beli</th><th>Harga Jual</th><th>Aksi</th></tr></thead>
+                    <tbody id="ref-table-body"></tbody>
+                </table>
             </div>
         </div>
 
-        <div id="section-kelola-stok" class="section hidden">
-            <h3>Kelola Stok Barang</h3>
+        <div id="section-stok" class="section hidden">
+            <h3><i class="bi bi-archive"></i> Kelola Stok</h3>
             <div class="card p-4">
                 <div class="row g-2 mb-3">
-                    <div class="col-md-3">
-                        <div class="input-group">
-                            <input type="text" id="stok-barcode" class="form-control" placeholder="Scan Barcode">
-                            <button class="btn btn-outline-primary" onclick="startScanner('stok-barcode')"><i class="bi bi-camera"></i></button>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <select id="stok-type" class="form-select">
-                            <option value="awal">Stok Awal</option>
-                            <option value="masuk">Stok Masuk</option>
-                            <option value="rusak">Stok Rusak</option>
-                            <option value="hilang">Stok Hilang</option>
-                            <option value="retur">Stok Retur</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2"><input type="number" id="stok-qty" class="form-control" value="1"></div>
-                    <div class="col-md-2"><button class="btn btn-primary w-100" onclick="processStock()">Update</button></div>
-                    <div class="col-md-3"><input type="text" id="search-stok" class="form-control border-primary" placeholder="Cari Nama/Kode..." oninput="renderStok()"></div>
+                    <div class="col-md-3"><div class="input-group"><input type="text" id="st-barcode" class="form-control" placeholder="Scan Kode"><button class="btn btn-primary" onclick="startScanner('st-barcode')"><i class="bi bi-camera"></i></button></div></div>
+                    <div class="col-md-2"><select id="st-type" class="form-select"><option value="awal">Stok Awal</option><option value="masuk">Stok Masuk</option><option value="rusak">Stok Rusak</option><option value="hilang">Stok Hilang</option><option value="retur">Stok Retur</option></select></div>
+                    <div class="col-md-2"><input type="number" id="st-qty" class="form-control" value="1"></div>
+                    <div class="col-md-2"><button class="btn btn-primary w-100" onclick="processStock()">Update Stok</button></div>
+                    <div class="col-md-3"><input type="text" class="form-control border-primary" placeholder="Cari..." oninput="renderStok(this.value)"></div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle text-center table-stok">
-                        <thead class="table-secondary">
-                            <tr>
-                                <th class="text-start">Nama Barang</th><th>Barcodes</th><th>Awal</th><th>Masuk</th><th>Retur</th><th>Rusak</th><th>Hilang</th><th>Terjual</th><th class="bg-sisa">Sisa</th><th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="stock-table-body"></tbody>
+                    <table class="table table-bordered text-center align-middle">
+                        <thead class="table-secondary"><tr><th>Nama Barang</th><th>Awal</th><th>Masuk</th><th>Retur</th><th>Rusak</th><th>Hilang</th><th>Terjual</th><th class="bg-primary text-white">Sisa</th><th>Aksi</th></tr></thead>
+                        <tbody id="stok-table-body"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
         <div id="section-transaksi" class="section hidden">
+            <div class="row mb-3">
+                <div class="col-md-3"><label class="small fw-bold">No. Transaksi</label><input type="text" id="tx-id" class="form-control bg-light" readonly></div>
+                <div class="col-md-3"><label class="small fw-bold">Waktu</label><input type="text" id="tx-time" class="form-control bg-light" readonly></div>
+            </div>
             <div class="row">
                 <div class="col-md-8">
-                    <div class="card p-3">
+                    <div class="card p-3 mb-3">
                         <div class="row g-2 mb-3">
-                            <div class="col-md-8">
-                                <div class="input-group">
-                                    <button class="btn btn-primary" onclick="startScanner('kasir-scan')"><i class="bi bi-camera me-1"></i> SCAN</button>
-                                    <input type="text" id="kasir-scan" class="form-control" placeholder="Tembak Barcode..." onkeypress="if(event.key==='Enter') handleKasirScan(this.value)">
-                                </div>
-                            </div>
-                            <div class="col-md-4"><input type="text" id="search-keranjang" class="form-control" placeholder="Cari di keranjang..." oninput="renderCart()"></div>
+                            <div class="col-md-6"><select id="tx-drop" class="form-select" onchange="if(this.value) handleAdd(this.value)"><option value="">-- Pilih Barang (Dropdown) --</option></select></div>
+                            <div class="col-md-4"><div class="input-group"><button class="btn btn-primary" onclick="startScanner('tx-scan')"><i class="bi bi-camera"></i></button><input type="text" id="tx-scan" class="form-control" placeholder="Scan Barcode..." onkeypress="if(event.key==='Enter') handleAdd(this.value)"></div></div>
+                            <div class="col-md-2"><button class="btn btn-outline-danger w-100" onclick="refreshTx()"><i class="bi bi-arrow-clockwise"></i> Refresh</button></div>
                         </div>
                         <table class="table align-middle">
-                            <thead class="table-light"><tr><th>Nama Barang</th><th>Harga</th><th width="120">Qty</th><th>Subtotal</th><th>#</th></tr></thead>
+                            <thead class="table-light"><tr><th>Barang</th><th>Harga</th><th width="140">Qty</th><th>Subtotal</th><th>Aksi</th></tr></thead>
                             <tbody id="cart-table"></tbody>
                         </table>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="total-banner mb-3 text-end shadow-sm">
-                        <small class="text-muted">Total Bayar</small>
-                        <div class="total-amount" id="total-text">Rp 0</div>
-                    </div>
-                    <div class="card p-3">
-                        <label class="small fw-bold mb-1">Metode Pembayaran</label>
-                        <select id="pay-method" class="form-select mb-2" onchange="togglePay()">
-                            <option value="CASH">CASH (Tunai)</option>
-                            <option value="SPLIT">SPLIT (Tunai + QRIS)</option>
+                    <div class="total-banner mb-3 shadow-sm"><small class="text-muted">Grand Total</small><div class="total-amount" id="total-val">Rp 0</div></div>
+                    <div class="card p-3 border-top border-primary border-4">
+                        <label class="small fw-bold mb-1">Metode Bayar</label>
+                        <select id="pay-method" class="form-select mb-3" onchange="updatePayUI()">
+                            <option value="CASH">1 Metode: CASH</option>
+                            <option value="QRIS">1 Metode: QRIS</option>
+                            <option value="SPLIT">2 Metode: SPLIT (Cash + QRIS)</option>
                         </select>
-                        <input type="number" id="input-tunai" class="form-control mb-2" placeholder="Nominal Tunai" oninput="calcPayment()">
-                        <div id="div-qris" class="hidden">
-                            <input type="number" id="input-qris" class="form-control mb-2" readonly placeholder="Sisa QRIS">
+                        <div id="ui-cash"><label class="small fw-bold">Nominal Cash</label><input type="number" id="in-cash" class="form-control mb-2" oninput="calcSplit()"></div>
+                        <div id="ui-qris" class="hidden">
+                            <label class="small fw-bold">Opsi QRIS</label>
+                            <select id="qr-type" class="form-select mb-2"><option>ShopeePay</option><option>Gopay</option><option>OVO</option><option>Dana</option><option>LinkAja</option></select>
+                            <label class="small fw-bold">Nominal QRIS (Otomatis)</label><input type="number" id="in-qris" class="form-control bg-light mb-2" readonly>
                         </div>
-                        <div class="d-flex justify-content-between h5 text-success mt-2 mb-3">
-                            <span>Kembali:</span> <span id="text-kembali">Rp 0</span>
-                        </div>
-                        <button class="btn btn-primary w-100 py-3 fw-bold shadow" onclick="previewReceipt()">SIMPAN & CETAK STRUK</button>
+                        <hr><div class="d-flex justify-content-between h5 text-success"><span>Kembali:</span> <span id="val-kembali">Rp 0</span></div>
+                        <button class="btn btn-primary w-100 py-3 fw-bold mt-2" onclick="previewStruk()">SIMPAN & CETAK</button>
                     </div>
                 </div>
             </div>
@@ -189,23 +145,14 @@
             <div class="card p-4">
                 <div class="row">
                     <div class="col-md-6 border-end">
-                        <div class="text-center mb-3">
-                            <img id="preview-logo" src="https://via.placeholder.com/80" class="rounded-circle border mb-2" width="80" height="80">
-                            <input type="file" class="form-control form-control-sm" onchange="uploadLogo(this)">
-                        </div>
-                        <label class="form-label">Nama Toko</label>
-                        <input type="text" id="set-nama" class="form-control mb-2">
-                        <label class="form-label">Alamat Toko</label>
-                        <textarea id="set-alamat" class="form-control mb-2"></textarea>
-                        <label class="form-label">WhatsApp Toko</label>
-                        <input type="text" id="set-hp" class="form-control mb-2">
+                        <div class="text-center mb-3"><img id="set-preview" src="https://via.placeholder.com/80" class="rounded-circle border mb-2" width="80" height="80"><input type="file" class="form-control form-control-sm" onchange="uploadLogo(this)"></div>
+                        <label class="form-label">Nama Toko</label><input type="text" id="set-n" class="form-control mb-2">
+                        <label class="form-label">Alamat Toko</label><textarea id="set-a" class="form-control mb-2"></textarea>
                     </div>
-                    <div class="col-md-6 ps-md-4">
-                        <label class="form-label">Username Instagram</label>
-                        <input type="text" id="set-ig" class="form-control mb-2">
-                        <label class="form-label">Username TikTok</label>
-                        <input type="text" id="set-tiktok" class="form-control mb-4">
-                        <button class="btn btn-primary w-100 py-2" onclick="saveSettings()">Simpan Semua Pengaturan</button>
+                    <div class="col-md-6 ps-4">
+                        <label class="form-label">WhatsApp</label><input type="text" id="set-w" class="form-control mb-2">
+                        <label class="form-label">Instagram</label><input type="text" id="set-i" class="form-control mb-2">
+                        <button class="btn btn-primary w-100 mt-4" onclick="saveSets()">Simpan Pengaturan</button>
                     </div>
                 </div>
             </div>
@@ -214,37 +161,17 @@
     </div>
 
     <div class="modal fade" id="modalStruk" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header border-0 pb-0"><button class="btn-close" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body text-center bg-light">
-                    <div id="receipt-preview-content"></div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button class="btn btn-success" onclick="finishTransaction()">Konfirmasi & Cetak</button>
-                </div>
-            </div>
-        </div>
+        <div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5>Preview Struk</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light text-center"><div id="receipt-content"></div></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" onclick="confirmFinish()">Cetak & Simpan</button></div></div></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // --- DATABASE ---
         let dbRef = JSON.parse(localStorage.getItem('pos_db_ref')) || [];
-        let dbStock = JSON.parse(localStorage.getItem('pos_db_stok')) || [];
-        let settings = JSON.parse(localStorage.getItem('pos_db_set')) || {
-            nama: "My Store", hp: "081...", alamat: "Jl. Example No.1", logo: "https://via.placeholder.com/80", ig: "@mystore", tiktok: "@mystore"
-        };
-        let cart = [];
-        let qrScanner;
+        let dbStok = JSON.parse(localStorage.getItem('pos_db_stok')) || [];
+        let sets = JSON.parse(localStorage.getItem('pos_db_set')) || { n: "Smart POS", a: "Jl. Raya No.1", w: "081", i: "@pos", l: "" };
+        let cart = []; let scanner;
 
-        // --- INIT ---
-        window.onload = () => { applySettings(); renderAll(); };
-
-        function formatRP(num) {
-            return "Rp " + parseInt(num).toLocaleString('id-ID');
-        }
+        window.onload = () => { applySets(); refreshTx(); renderAll(); };
+        function formatRP(n) { return "Rp " + parseInt(n).toLocaleString('id-ID'); }
 
         // --- NAVIGATION ---
         function showSection(id) {
@@ -252,300 +179,154 @@
             document.getElementById('section-' + id).classList.remove('hidden');
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             event.currentTarget?.classList.add('active');
-            stopScanner();
-            renderAll();
+            stopScanner(); renderAll();
         }
 
-        // --- SCANNER ENGINE ---
-        function startScanner(tid) {
-            document.getElementById('scanner-area').classList.remove('hidden');
-            qrScanner = new Html5Qrcode("reader");
-            qrScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-                document.getElementById(tid).value = text;
-                stopScanner();
-                if(tid === 'kasir-scan') handleKasirScan(text);
-            });
-        }
-        function stopScanner() { if(qrScanner) qrScanner.stop().then(() => document.getElementById('scanner-area').classList.add('hidden')); }
-
-        // --- REFERENSI CRUD ---
-        function saveReference() {
-            const b = document.getElementById('ref-barcode').value;
-            const n = document.getElementById('ref-nama').value;
-            const pb = document.getElementById('ref-beli').value;
-            const pj = document.getElementById('ref-jual').value;
-
-            if(!b || !n || !pb || !pj) return alert("Harap lengkapi semua data!");
-            if(dbRef.some(p => p.barcode === b)) return alert("Barcode ini sudah ada!");
-
+        // --- REFERENSI ---
+        function saveRef() {
+            const b = document.getElementById('ref-barcode').value, n = document.getElementById('ref-nama').value, pb = document.getElementById('ref-beli').value, pj = document.getElementById('ref-jual').value;
+            if(!b || !n || !pb || !pj) return alert("Lengkapi data!");
             dbRef.push({ barcode: b, nama: n, beli: pb, jual: pj });
-            
-            // Logic: One Name, Multi-Barcode
-            let sExist = dbStock.find(s => s.nama === n);
-            if(!sExist) {
-                dbStock.push({ nama: n, codes: [b], awal: 0, masuk: 0, retur: 0, rusak: 0, hilang: 0, terjual: 0 });
-            } else {
-                if(!sExist.codes.includes(b)) sExist.codes.push(b);
-            }
-
-            saveAndRender();
-            clearInput('section-referensi');
-            alert("Berhasil disimpan!");
+            if(!dbStok.find(s => s.nama === n)) dbStok.push({ nama: n, awal: 0, masuk: 0, retur: 0, rusak: 0, hilang: 0, terjual: 0 });
+            save(); clearRef();
         }
-
-        function editRef(idx) {
-            const p = dbRef[idx];
-            document.getElementById('ref-barcode').value = p.barcode;
-            document.getElementById('ref-nama').value = p.nama;
-            document.getElementById('ref-beli').value = p.beli;
-            document.getElementById('ref-jual').value = p.jual;
-            document.getElementById('ref-edit-index').value = idx;
-            document.getElementById('btn-ref-save').classList.add('hidden');
-            document.getElementById('btn-ref-update').classList.remove('hidden');
+        function editRef(i) {
+            const p = dbRef[i]; document.getElementById('ref-barcode').value = p.barcode; document.getElementById('ref-nama').value = p.nama; document.getElementById('ref-beli').value = p.beli; document.getElementById('ref-jual').value = p.jual;
+            document.getElementById('ref-edit-index').value = i; document.getElementById('btn-ref-save').classList.add('hidden'); document.getElementById('btn-ref-update').classList.remove('hidden');
         }
-
-        function updateReference() {
-            const idx = document.getElementById('ref-edit-index').value;
-            const oldName = dbRef[idx].nama;
-            const newName = document.getElementById('ref-nama').value;
-            const newJual = document.getElementById('ref-jual').value;
-
-            // Update Stok Table if name changed
-            dbStock.forEach(s => { if(s.nama === oldName) s.nama = newName; });
-            // Update Cart
-            cart.forEach(c => { if(c.nama === oldName) { c.nama = newName; c.jual = newJual; c.sub = c.qty * newJual; } });
-
-            dbRef[idx] = {
-                barcode: document.getElementById('ref-barcode').value,
-                nama: newName,
-                beli: document.getElementById('ref-beli').value,
-                jual: newJual
-            };
-
-            saveAndRender();
-            clearInput('section-referensi');
-            document.getElementById('btn-ref-save').classList.remove('hidden');
-            document.getElementById('btn-ref-update').classList.add('hidden');
-            alert("Data berhasil di-update!");
+        function updateRef() {
+            const i = document.getElementById('ref-edit-index').value, oldN = dbRef[i].nama, newN = document.getElementById('ref-nama').value;
+            dbStok.forEach(s => { if(s.nama === oldN) s.nama = newN; });
+            dbRef[i] = { barcode: document.getElementById('ref-barcode').value, nama: newN, beli: document.getElementById('ref-beli').value, jual: document.getElementById('ref-jual').value };
+            save(); clearRef(); document.getElementById('btn-ref-save').classList.remove('hidden'); document.getElementById('btn-ref-update').classList.add('hidden');
         }
+        function clearRef() { document.querySelectorAll('#section-referensi input').forEach(i => i.value = ''); }
 
-        // --- STOK LOGIC ---
+        // --- STOK ---
         function processStock() {
-            const code = document.getElementById('stok-barcode').value;
-            const type = document.getElementById('stok-type').value;
-            const qty = parseInt(document.getElementById('stok-qty').value);
-
-            const p = dbRef.find(x => x.barcode === code);
-            if(!p) return alert("Barcode belum terdaftar di Referensi!");
-
-            const s = dbStock.find(x => x.nama === p.nama);
-            if(s) {
-                s[type] += qty;
-                saveAndRender();
-                document.getElementById('stok-barcode').value = '';
-                alert("Stok berhasil diperbarui!");
-            }
+            const b = document.getElementById('st-barcode').value, t = document.getElementById('st-type').value, q = parseInt(document.getElementById('st-qty').value);
+            const p = dbRef.find(x => x.barcode === b);
+            if(!p) return alert("Barcode tidak ada!");
+            const s = dbStok.find(x => x.nama === p.nama);
+            if(s) { s[t] += q; save(); document.getElementById('st-barcode').value = ''; alert("Stok diupdate!"); }
         }
+        function editStk(i, k) { let v = prompt(`Edit ${k}:`, dbStok[i][k]); if(v) { dbStok[i][k] = parseInt(v); save(); } }
 
-        function editStockQty(idx, key) {
-            const current = dbStock[idx][key];
-            const newVal = prompt(`Edit Jumlah ${key.toUpperCase()}:`, current);
-            if(newVal !== null && !isNaN(newVal)) {
-                dbStock[idx][key] = parseInt(newVal);
-                saveAndRender();
-            }
+        // --- TRANSAKSI ---
+        function refreshTx() {
+            document.getElementById('tx-id').value = "TX-" + Date.now();
+            document.getElementById('tx-time').value = new Date().toLocaleString();
+            cart = []; renderCart();
         }
-
-        // --- KASIR ENGINE ---
-        function handleKasirScan(code) {
-            const p = dbRef.find(x => x.barcode === code);
-            if(!p) return alert("Produk tidak ditemukan!");
-
-            const s = dbStock.find(x => x.nama === p.nama);
-            const sisa = s.awal + s.masuk + s.retur - s.rusak - s.hilang - s.terjual;
-
-            const cartItem = cart.find(c => c.nama === p.nama);
-            let currentInCar= cartItem ? cartItem.qty : 0;
-
-            if(currentInCart + 1 > sisa) {
-                return alert(`Maaf, sisa stok ${p.nama} hanya ${sisa}. Tidak bisa menambah lagi!`);
-            }
-
-            if(cartItem) {
-                cartItem.qty++;
-                cartItem.sub = cartItem.qty * cartItem.jual;
+        function handleAdd(code) {
+            const p = dbRef.find(x => x.barcode === code); if(!p) return alert("Barang tidak ditemukan!");
+            const s = dbStok.find(x => x.nama === p.nama);
+            const sisa = s ? (s.awal + s.masuk + s.retur - s.rusak - s.hilang - s.terjual) : 0;
+            let item = cart.find(c => c.nama === p.nama);
+            if(item) {
+                if(item.qty + 1 > sisa) return alert(`Stok ${p.nama} sisa ${sisa}!`);
+                item.qty++; item.sub = item.qty * item.jual;
             } else {
+                if(sisa < 1) return alert("Stok Habis!");
                 cart.push({ nama: p.nama, jual: p.jual, qty: 1, sub: parseInt(p.jual) });
             }
-            renderCart();
-            document.getElementById('kasir-scan').value = '';
+            renderCart(); document.getElementById('tx-scan').value = ''; document.getElementById('tx-drop').value = '';
         }
-
-        function calcPayment() {
-            const total = cart.reduce((a, b) => a + b.sub, 0);
-            const tunai = parseFloat(document.getElementById('input-tunai').value) || 0;
-            const method = document.getElementById('pay-method').value;
-
-            if(method === 'SPLIT') {
-                const sisa = total - tunai;
-                document.getElementById('input-qris').value = sisa > 0 ? sisa : 0;
-                document.getElementById('text-kembali').innerText = formatRP(tunai > total ? tunai - total : 0);
+        function adjCart(i, n) {
+            const s = dbStok.find(x => x.nama === cart[i].nama);
+            const sisa = s.awal + s.masuk + s.retur - s.rusak - s.hilang - s.terjual;
+            if(n > 0 && cart[i].qty + 1 > sisa) return alert("Stok limit!");
+            if(cart[i].qty + n > 0) { cart[i].qty += n; cart[i].sub = cart[i].qty * cart[i].jual; renderCart(); }
+        }
+        function updatePayUI() {
+            const m = document.getElementById('pay-method').value;
+            document.getElementById('ui-cash').classList.toggle('hidden', m === 'QRIS');
+            document.getElementById('ui-qris').classList.toggle('hidden', m === 'CASH');
+            calcSplit();
+        }
+        function calcSplit() {
+            const tot = cart.reduce((a, b) => a + b.sub, 0), m = document.getElementById('pay-method').value, cash = parseFloat(document.getElementById('in-cash').value) || 0;
+            if(m === 'SPLIT') {
+                let sisa = tot - cash; document.getElementById('in-qris').value = sisa > 0 ? sisa : 0;
+                document.getElementById('val-kembali').innerText = formatRP(cash > tot ? cash - tot : 0);
+            } else if(m === 'CASH') {
+                document.getElementById('val-kembali').innerText = formatRP(cash > tot ? cash - tot : 0);
             } else {
-                document.getElementById('text-kembali').innerText = formatRP(tunai > total ? tunai - total : 0);
+                document.getElementById('in-qris').value = tot; document.getElementById('val-kembali').innerText = "Rp 0";
             }
         }
 
-        function previewReceipt() {
-            if(cart.length === 0) return alert("Keranjang masih kosong!");
-            let h = `<strong>${settings.nama}</strong><br><small>${settings.alamat}</small><hr>`;
-            cart.forEach(c => {
-                h += `<div class="d-flex justify-content-between"><span>${c.nama} x${c.qty}</span><span>${formatRP(c.sub)}</span></div>`;
-            });
-            h += `<hr><div class="d-flex justify-content-between fw-bold"><span>TOTAL</span><span>${document.getElementById('total-text').innerText}</span></div>`;
-            h += `<div class="d-flex justify-content-between"><span>KEMBALI</span><span>${document.getElementById('text-kembali').innerText}</span></div>`;
-            h += `<hr><small>WA: ${settings.hp}<br>IG: ${settings.ig}</small>`;
-            
-            document.getElementById('receipt-preview-content').innerHTML = h;
+        // --- STRUK ---
+        function previewStruk() {
+            if(!cart.length) return alert("Kosong!");
+            let h = `<strong>${sets.n}</strong><br>${sets.a}<hr>`;
+            cart.forEach(c => h += `<div class="d-flex justify-content-between"><span>${c.nama} x${c.qty}</span><span>${formatRP(c.sub)}</span></div>`);
+            h += `<hr><div class="d-flex justify-content-between fw-bold"><span>TOTAL</span><span>${formatRP(cart.reduce((a,b)=>a+b.sub,0))}</span></div>`;
+            h += `<div class="d-flex justify-content-between"><span>KEMBALI</span><span>${document.getElementById('val-kembali').innerText}</span></div><hr>Terima Kasih!`;
+            document.getElementById('receipt-content').innerHTML = h;
             new bootstrap.Modal('#modalStruk').show();
         }
-
-        function finishTransaction() {
-            cart.forEach(c => {
-                let s = dbStock.find(x => x.nama === c.nama);
-                if(s) s.terjual += c.qty;
-            });
-            localStorage.setItem('pos_db_stok', JSON.stringify(dbStock));
-            window.print();
-            cart = [];
-            renderAll();
-            bootstrap.Modal.getInstance('#modalStruk').hide();
+        function confirmFinish() {
+            cart.forEach(c => { let s = dbStok.find(x => x.nama === c.nama); if(s) s.terjual += c.qty; });
+            localStorage.setItem('pos_db_stok', JSON.stringify(dbStok)); window.print(); refreshTx(); bootstrap.Modal.getInstance('#modalStruk').hide();
         }
 
-        // --- UI RENDERERS ---
+        // --- CORE ---
         function renderAll() {
-            renderDashboard();
-            renderRef();
-            renderStok();
-            renderCart();
-        }
+            // Dashboard
+            document.getElementById('dash-total-p').innerText = dbRef.length;
+            let totalS = 0, out = 0;
+            dbStok.forEach(s => { let sisa = s.awal+s.masuk+s.retur-s.rusak-s.hilang-s.terjual; totalS += sisa; if(sisa <= 0) out++; });
+            document.getElementById('dash-total-s').innerText = totalS;
+            document.getElementById('dash-out').innerText = out;
 
-        function renderDashboard() {
-            document.getElementById('dash-total-ref').innerText = dbRef.length;
-            let totalSisa = 0;
-            let habis = 0;
-            let limit = 0;
-            dbStock.forEach(s => {
-                let sisa = s.awal + s.masuk + s.retur - s.rusak - s.hilang - s.terjual;
-                totalSisa += sisa;
-                if(sisa <= 0) habis++;
-                else if(sisa <= 10) limit++;
-            });
-            document.getElementById('dash-total-stok').innerText = totalSisa;
-            document.getElementById('dash-out').innerText = habis;
-            document.getElementById('dash-limit').innerText = limit;
-        }
-
-        function renderRef() {
-            let html = '';
+            // Ref & Stok
+            let hr = '', hs = '', hd = '<option value="">-- Pilih Barang (Dropdown) --</option>';
             dbRef.forEach((p, i) => {
-                html += `<tr><td>${p.barcode}</td><td>${p.nama}</td><td>${formatRP(p.beli)}</td><td>${formatRP(p.jual)}</td>
-                <td><button class="btn btn-sm btn-info" onclick="editRef(${i})">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteItem('ref', ${i})">🗑️</button></td></tr>`;
+                hr += `<tr><td>${p.barcode}</td><td>${p.nama}</td><td>${formatRP(p.beli)}</td><td>${formatRP(p.jual)}</td><td><button class="btn btn-sm btn-info" onclick="editRef(${i})">✏️</button> <button class="btn btn-sm btn-danger" onclick="delItem('ref',${i})">🗑️</button></td></tr>`;
+                hd += `<option value="${p.barcode}">${p.nama}</option>`;
             });
-            document.getElementById('ref-table-body').innerHTML = html;
-        }
-
-        function renderStok() {
-            let html = '';
-            let search = document.getElementById('search-stok').value.toLowerCase();
-            dbStock.forEach((s, i) => {
-                if(s.nama.toLowerCase().includes(search) || s.codes.some(c => c.includes(search))) {
-                    let sisa = s.awal + s.masuk + s.retur - s.rusak - s.hilang - s.terjual;
-                    html += `<tr>
-                        <td class="text-start">${s.nama}</td><td class="small text-muted">${s.codes.join(',')}</td>
-                        <td onclick="editStockQty(${i},'awal')">${s.awal}</td><td onclick="editStockQty(${i},'masuk')">${s.masuk}</td>
-                        <td onclick="editStockQty(${i},'retur')">${s.retur}</td><td onclick="editStockQty(${i},'rusak')">${s.rusak}</td>
-                        <td onclick="editStockQty(${i},'hilang')">${s.hilang}</td><td>${s.terjual}</td>
-                        <td class="bg-sisa">${sisa}</td>
-                        <td><button class="btn btn-sm btn-danger" onclick="deleteItem('stok', ${i})">🗑️</button></td>
-                    </tr>`;
-                }
+            dbStok.forEach((s, i) => {
+                let sisa = s.awal+s.masuk+s.retur-s.rusak-s.hilang-s.terjual;
+                hs += `<tr><td class="text-start">${s.nama}</td><td onclick="editStk(${i},'awal')">${s.awal}</td><td onclick="editStk(${i},'masuk')">${s.masuk}</td><td onclick="editStk(${i},'retur')">${s.retur}</td><td onclick="editStk(${i},'rusak')">${s.rusak}</td><td onclick="editStk(${i},'hilang')">${s.hilang}</td><td>${s.terjual}</td><td class="bg-primary text-white">${sisa}</td><td><button class="btn btn-sm btn-danger" onclick="delItem('stk',${i})">🗑️</button></td></tr>`;
             });
-            document.getElementById('stock-table-body').innerHTML = html;
+            document.getElementById('ref-table-body').innerHTML = hr;
+            document.getElementById('stok-table-body').innerHTML = hs;
+            document.getElementById('tx-drop').innerHTML = hd;
         }
 
         function renderCart() {
-            let html = '';
-            let total = 0;
-            let search = document.getElementById('search-keranjang').value.toLowerCase();
-            cart.forEach((c, i) => {
-                if(c.nama.toLowerCase().includes(search)) {
-                    total += c.sub;
-                    html += `<tr><td>${c.nama}</td><td>${formatRP(c.jual)}</td>
-                    <td><button class="btn btn-sm btn-light" onclick="adjCart(${i},-1)">-</button> <span class="mx-2">${c.qty}</span> <button class="btn btn-sm btn-light" onclick="adjCart(${i},1)">+</button></td>
-                    <td>${formatRP(c.sub)}</td><td><i class="bi bi-trash text-danger" style="cursor:pointer" onclick="cart.splice(${i},1);renderCart();"></i></td></tr>`;
-                }
-            });
-            document.getElementById('cart-table').innerHTML = html;
-            document.getElementById('total-text').innerText = formatRP(total);
-            calcPayment();
+            let hc = ''; let t = 0;
+            cart.forEach((c, i) => { t += c.sub; hc += `<tr><td>${c.nama}</td><td>${formatRP(c.jual)}</td><td><button class="btn btn-sm btn-light" onclick="adjCart(${i},-1)">-</button> ${c.qty} <button class="btn btn-sm btn-light" onclick="adjCart(${i},1)">+</button></td><td>${formatRP(c.sub)}</td><td><button class="btn btn-sm btn-link text-danger" onclick="cart.splice(${i},1);renderCart();">Batal</button></td></tr>`; });
+            document.getElementById('cart-table').innerHTML = hc;
+            document.getElementById('total-val').innerText = formatRP(t);
+            calcSplit();
         }
 
-        function adjCart(i, n) {
-            const s = dbStock.find(x => x.nama === cart[i].nama);
-            const sisa = s.awal + s.masuk + s.retur - s.rusak - s.hilang - s.terjual;
-            if(n > 0 && cart[i].qty + 1 > sisa) return alert("Stok tidak mencukupi!");
-            if(cart[i].qty + n > 0) { cart[i].qty += n; cart[i].sub = cart[i].qty * cart[i].jual; renderCart(); }
+        function save() { localStorage.setItem('pos_db_ref', JSON.stringify(dbRef)); localStorage.setItem('pos_db_stok', JSON.stringify(dbStok)); renderAll(); }
+        function delItem(t, i) { if(confirm("Hapus?")) { if(t === 'ref') dbRef.splice(i, 1); else dbStok.splice(i, 1); save(); } }
+        
+        // --- SCANNER ---
+        function startScanner(id) {
+            document.getElementById('scanner-area').classList.remove('hidden');
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+                if(id === 'tx-scan') handleAdd(text); else document.getElementById(id).value = text;
+                stopScanner();
+            });
         }
+        function stopScanner() { if(scanner) scanner.stop().then(()=>document.getElementById('scanner-area').classList.add('hidden')); }
 
         // --- SETTINGS ---
-        function saveSettings() {
-            settings = {
-                nama: document.getElementById('set-nama').value,
-                hp: document.getElementById('set-hp').value,
-                alamat: document.getElementById('set-alamat').value,
-                logo: document.getElementById('preview-logo').src,
-                ig: document.getElementById('set-ig').value,
-                tiktok: document.getElementById('set-tiktok').value
-            };
-            localStorage.setItem('pos_db_set', JSON.stringify(settings));
-            applySettings();
-            alert("Pengaturan Berhasil Disimpan!");
+        function uploadLogo(i) { if(i.files[0]) { let r = new FileReader(); r.onload = (e) => document.getElementById('set-preview').src = e.target.result; r.readAsDataURL(i.files[0]); } }
+        function saveSets() {
+            sets = { n: document.getElementById('set-n').value, a: document.getElementById('set-a').value, w: document.getElementById('set-w').value, i: document.getElementById('set-i').value, l: document.getElementById('set-preview').src };
+            localStorage.setItem('pos_db_set', JSON.stringify(sets)); applySets(); alert("Disimpan!");
         }
-
-        function applySettings() {
-            document.getElementById('side-store-name').innerText = settings.nama;
-            document.getElementById('side-logo').src = settings.logo;
-            document.getElementById('preview-logo').src = settings.logo;
-            document.getElementById('set-nama').value = settings.nama;
-            document.getElementById('set-hp').value = settings.hp;
-            document.getElementById('set-alamat').value = settings.alamat;
-            document.getElementById('set-ig').value = settings.ig;
-            document.getElementById('set-tiktok').value = settings.tiktok;
+        function applySets() {
+            document.getElementById('side-store-name').innerText = sets.n; document.getElementById('side-logo').src = sets.l || "https://via.placeholder.com/80";
+            document.getElementById('set-n').value = sets.n; document.getElementById('set-a').value = sets.a; document.getElementById('set-w').value = sets.w; document.getElementById('set-i').value = sets.i; document.getElementById('set-preview').src = sets.l || "https://via.placeholder.com/80";
         }
-
-        function uploadLogo(input) {
-            if (input.files && input.files[0]) {
-                let reader = new FileReader();
-                reader.onload = (e) => document.getElementById('preview-logo').src = e.target.result;
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        // --- UTILS ---
-        function clearInput(sid) { document.querySelectorAll(`#${sid} input`).forEach(i => { if(i.type !== 'button') i.value = ''; }); }
-        function saveAndRender() {
-            localStorage.setItem('pos_db_ref', JSON.stringify(dbRef));
-            localStorage.setItem('pos_db_stok', JSON.stringify(dbStock));
-            renderAll();
-        }
-        function deleteItem(type, idx) {
-            if(confirm("Hapus data ini?")) {
-                if(type === 'ref') dbRef.splice(idx, 1);
-                else dbStock.splice(idx, 1);
-                saveAndRender();
-            }
-        }
-        function togglePay() { document.getElementById('div-qris').classList.toggle('hidden', document.getElementById('pay-method').value === 'CASH'); }
     </script>
 </body>
 </html>
