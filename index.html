@@ -3,36 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master POS Pro v10 - Ultimate Analytics</title>
+    <title>Master POS v11 - Scan & Analytics</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
         :root { --primary: #1e293b; --accent: #3b82f6; --sidebar-width: 250px; }
         body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; font-size: 13px; }
         .sidebar { width: var(--sidebar-width); position: fixed; height: 100vh; background: var(--primary); color: white; z-index: 1000; overflow-y: auto; }
-        .sidebar-brand { padding: 25px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: bold; font-size: 1.2rem; }
-        .sidebar a { color: #94a3b8; text-decoration: none; padding: 12px 20px; display: block; transition: 0.3s; border-bottom: 1px solid rgba(255,255,255,0.02); }
+        .sidebar-brand { padding: 25px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: bold; }
+        .sidebar a { color: #94a3b8; text-decoration: none; padding: 12px 20px; display: block; border-bottom: 1px solid rgba(255,255,255,0.02); }
         .sidebar a:hover, .sidebar a.active { background: #334155; color: white; border-left: 4px solid var(--accent); }
-        .main-content { margin-left: var(--sidebar-width); padding: 25px; min-height: 100vh; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .stat-card { padding: 20px; border-radius: 12px; height: 100%; }
-        .stat-val { font-size: 1.4rem; font-weight: 700; display: block; }
+        .main-content { margin-left: var(--sidebar-width); padding: 20px; min-height: 100vh; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .hidden { display: none; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
         .qris-box { background: #f8fafc; border: 2px dashed #cbd5e1; padding: 15px; border-radius: 12px; }
-        #receipt-content { width: 80mm; background: white; padding: 10px; font-family: 'Courier New', monospace; border: 1px solid #ddd; margin: 0 auto; font-size: 12px; }
+        #receipt-content { width: 80mm; background: white; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #ddd; margin: 0 auto; }
         @media print { body * { visibility: hidden; } #receipt-content, #receipt-content * { visibility: visible; } #receipt-content { position: absolute; left: 0; top: 0; width: 100%; border: none; } }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <div class="sidebar-brand">SMART ANALYTICS</div>
+        <div class="sidebar-brand">SMART POS SCANNER</div>
         <nav class="mt-2">
             <a href="#" onclick="showSection('dashboard')" class="nav-link active"><i class="bi bi-graph-up-arrow me-2"></i> Dashboard</a>
-            <a href="#" onclick="showSection('transaksi')" class="nav-link"><i class="bi bi-cart3 me-2"></i> Kasir</a>
-            <a href="#" onclick="showSection('referensi')" class="nav-link"><i class="bi bi-box-seam me-2"></i> Produk</a>
+            <a href="#" onclick="showSection('transaksi')" class="nav-link"><i class="bi bi-upc-scan me-2"></i> Kasir & Scan</a>
+            <a href="#" onclick="showSection('referensi')" class="nav-link"><i class="bi bi-box-seam me-2"></i> Produk (Referensi)</a>
             <a href="#" onclick="showSection('stok')" class="nav-link"><i class="bi bi-archive me-2"></i> Stok</a>
             <a href="#" onclick="showSection('setting')" class="nav-link"><i class="bi bi-qr-code-scan me-2"></i> Setting QRIS</a>
         </nav>
@@ -41,202 +41,133 @@
     <div class="main-content">
         
         <div id="section-dashboard" class="section">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3>Dashboard Analitik</h3>
-                <div class="d-flex gap-2">
-                    <input type="date" id="filter-date" class="form-control form-control-sm" onchange="renderDashboard()">
-                    <select id="filter-prod" class="form-select form-select-sm" onchange="renderDashboard()"></select>
-                </div>
+            <h4 class="mb-4">Analisa Penjualan</h4>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3"><div class="card p-3 bg-primary text-white"><span>Profit</span><h4 id="dash-profit">Rp 0</h4></div></div>
+                <div class="col-md-3"><div class="card p-3 bg-danger text-white"><span>Modal (HPP)</span><h4 id="dash-rugi">Rp 0</h4></div></div>
+                <div class="col-md-3"><div class="card p-3 bg-white"><span>Total Produk</span><h4 id="dash-total-p" class="text-primary">0</h4></div></div>
+                <div class="col-md-3"><div class="card p-3 bg-warning text-dark"><span>Stok Habis</span><h4 id="dash-out-stock">0</h4></div></div>
             </div>
-
-            <div class="row g-3 mb-4 text-center">
-                <div class="col-md-3"><div class="card stat-card bg-primary text-white"><span>Total Profit</span><span class="stat-val" id="dash-profit">Rp 0</span></div></div>
-                <div class="col-md-3"><div class="card stat-card bg-danger text-white"><span>Total HPP (Modal)</span><span class="stat-val" id="dash-rugi">Rp 0</span></div></div>
-                <div class="col-md-3"><div class="card stat-card bg-white"><span>Produk Terdaftar</span><span class="stat-val text-primary" id="dash-total-p">0</span></div></div>
-                <div class="col-md-3"><div class="card stat-card bg-warning"><span>Stok Habis</span><span class="stat-val" id="dash-out-stock">0</span></div></div>
-            </div>
-
             <div class="row">
-                <div class="col-md-8">
-                    <div class="card p-4">
-                        <h6>Irama Penjualan per Produk</h6>
-                        <canvas id="salesChart" height="150"></canvas>
-                    </div>
-                </div>
+                <div class="col-md-8"><div class="card p-4"><h6>Grafik Penjualan</h6><canvas id="salesChart" height="150"></canvas></div></div>
                 <div class="col-md-4">
-                    <div class="card p-3 mb-3">
-                        <h6 class="text-success"><i class="bi bi-star-fill"></i> Top 5 Terlaris</h6>
-                        <div id="list-top-5" class="small mt-2"></div>
-                    </div>
-                    <div class="card p-3">
-                        <h6 class="text-muted"><i class="bi bi-emoji-frown"></i> 5 Sepi Peminat</h6>
-                        <div id="list-low-5" class="small mt-2"></div>
-                    </div>
+                    <div class="card p-3"><h6>Top 5 Terlaris</h6><div id="list-top-5" class="small mt-2"></div></div>
                 </div>
             </div>
         </div>
 
         <div id="section-transaksi" class="section hidden">
             <div class="row">
-                <div class="col-md-8">
+                <div class="col-md-7">
                     <div class="card p-3">
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-primary btn-sm" onclick="startScanner()"><i class="bi bi-camera"></i> Buka Kamera Scan</button>
+                            <button class="btn btn-secondary btn-sm" onclick="stopScanner()">Tutup Kamera</button>
+                        </div>
+                        <div id="reader" class="mb-3"></div>
                         <select id="tx-drop" class="form-select mb-3" onchange="if(this.value) handleAdd(this.value)"></select>
                         <table class="table">
-                            <thead><tr><th>Item</th><th>Harga</th><th width="80">Qty</th><th>Total</th><th>#</th></tr></thead>
+                            <thead><tr><th>Item</th><th>Qty</th><th>Total</th><th>#</th></tr></thead>
                             <tbody id="cart-table"></tbody>
                         </table>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card p-3 border-top border-primary border-4 text-center shadow">
-                        <small class="text-muted">Total Bayar</small>
+                <div class="col-md-5">
+                    <div class="card p-4 shadow border-top border-primary border-4 text-center">
+                        <small>Grand Total</small>
                         <h2 class="fw-bold text-primary mb-3" id="total-val">Rp 0</h2>
-                        
                         <select id="pay-method" class="form-select mb-3" onchange="updatePayUI()">
                             <option value="CASH">Tunai (Cash)</option>
                             <option value="qr_sp">QRIS ShopeePay</option>
                             <option value="qr_da">QRIS Dana</option>
                             <option value="qr_gp">QRIS Gopay</option>
-                            <option value="qr_ov">QRIS OVO</option>
-                            <option value="qr_la">QRIS LinkAja</option>
                         </select>
-
                         <div id="ui-qris" class="qris-box hidden mb-3">
-                            <p class="small fw-bold text-primary mb-1">SCAN QRIS</p>
-                            <img id="display-qris-img" src="" style="width: 160px; height: 160px; background: white; padding: 5px; border: 1px solid #ddd;">
+                            <img id="display-qris-img" src="" style="width: 150px; height: 150px; background: white; border: 1px solid #ddd;">
                             <div class="mt-2 fw-bold text-danger">NOMINAL: <span id="qris-bill">Rp 0</span></div>
                         </div>
-
-                        <div id="ui-cash">
-                            <input type="number" id="in-cash" class="form-control mb-2" placeholder="Uang Tunai" oninput="calcPayment()">
-                            <h5 class="text-muted small">Kembali: <span id="val-kembali" class="text-danger fw-bold">Rp 0</span></h5>
-                        </div>
-
-                        <button class="btn btn-primary w-100 py-3 shadow mt-2 fw-bold" onclick="previewStruk()">KONFIRMASI & CETAK</button>
+                        <button class="btn btn-success w-100 py-3 fw-bold" onclick="previewStruk()">KONFIRMASI & CETAK</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="section-referensi" class="section hidden">
-            <h3>Produk Terdaftar</h3>
+            <h3>Input Referensi Produk</h3>
             <div class="card p-4">
-                <div class="row g-2 mb-4">
-                    <div class="col-md-4"><input type="text" id="ref-nama" class="form-control" placeholder="Nama Barang"></div>
-                    <div class="col-md-3"><input type="number" id="ref-beli" class="form-control" placeholder="Modal (HPP)"></div>
-                    <div class="col-md-3"><input type="number" id="ref-jual" class="form-control" placeholder="Harga Jual"></div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3"><input type="text" id="ref-code" class="form-control" placeholder="Barcode (Scan/Ketik)"></div>
+                    <div class="col-md-3"><input type="text" id="ref-nama" class="form-control" placeholder="Nama Barang"></div>
+                    <div class="col-md-2"><input type="number" id="ref-beli" class="form-control" placeholder="Harga Beli"></div>
+                    <div class="col-md-2"><input type="number" id="ref-jual" class="form-control" placeholder="Harga Jual"></div>
                     <div class="col-md-2"><button class="btn btn-success w-100" onclick="saveRef()">Simpan</button></div>
                 </div>
-                <table class="table table-hover"><thead><tr><th>Nama</th><th>Modal</th><th>Jual</th><th>Profit/Item</th><th>Aksi</th></tr></thead><tbody id="ref-table-body"></tbody></table>
+                <table class="table table-hover"><thead><tr><th>Barcode</th><th>Nama</th><th>HPP</th><th>Jual</th><th>#</th></tr></thead><tbody id="ref-table-body"></tbody></table>
             </div>
         </div>
 
         <div id="section-stok" class="section hidden">
-            <h3>Stok Barang</h3>
-            <div class="card p-3"><table class="table table-bordered"><thead class="table-light"><tr><th>Nama Barang</th><th>Sisa Stok</th></tr></thead><tbody id="stok-table-body"></tbody></table></div>
+            <h3>Monitoring Stok</h3>
+            <div class="card p-3"><table class="table"><tbody id="stok-table-body"></tbody></table></div>
         </div>
 
         <div id="section-setting" class="section hidden">
-            <h3>Konfigurasi QRIS Toko</h3>
-            <div class="card p-4">
-                <div class="row mb-4">
-                    <div class="col-md-6"><input type="text" id="set-n" class="form-control mb-2" placeholder="Nama Toko"><textarea id="set-a" class="form-control" placeholder="Alamat"></textarea><button class="btn btn-primary btn-sm mt-2" onclick="saveSets()">Simpan Profil</button></div>
-                </div>
-                <hr>
-                <h6>Upload Barcode Per Platform:</h6>
-                <div class="row g-3 text-center small">
-                    <div class="col-md-2">ShopeePay<input type="file" onchange="uploadQR(this, 'qr_sp')" class="form-control form-control-sm mt-1"></div>
-                    <div class="col-md-2">Dana<input type="file" onchange="uploadQR(this, 'qr_da')" class="form-control form-control-sm mt-1"></div>
-                    <div class="col-md-2">Gopay<input type="file" onchange="uploadQR(this, 'qr_gp')" class="form-control form-control-sm mt-1"></div>
-                    <div class="col-md-2">OVO<input type="file" onchange="uploadQR(this, 'qr_ov')" class="form-control form-control-sm mt-1"></div>
-                    <div class="col-md-2">LinkAja<input type="file" onchange="uploadQR(this, 'qr_la')" class="form-control form-control-sm mt-1"></div>
+            <h3>Upload QRIS Toko</h3>
+            <div class="card p-4 text-center">
+                <div class="row g-3">
+                    <div class="col-md-4">ShopeePay<input type="file" onchange="uploadQR(this, 'qr_sp')" class="form-control mt-1"></div>
+                    <div class="col-md-4">Dana<input type="file" onchange="uploadQR(this, 'qr_da')" class="form-control mt-1"></div>
+                    <div class="col-md-4">Gopay<input type="file" onchange="uploadQR(this, 'qr_gp')" class="form-control mt-1"></div>
                 </div>
             </div>
         </div>
 
     </div>
 
-    <div class="modal fade" id="modalStruk" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content"><div class="modal-body"><div id="receipt-content"></div></div><div class="modal-footer"><button class="btn btn-primary w-100" onclick="confirmFinish()">SIMPAN & PRINT</button></div></div></div></div>
+    <div class="modal fade" id="modalStruk" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content"><div class="modal-body"><div id="receipt-content"></div></div><div class="modal-footer"><button class="btn btn-primary w-100" onclick="confirmFinish()">SIMPAN & CETAK</button></div></div></div></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let dbRef = JSON.parse(localStorage.getItem('pos_db_ref')) || [];
         let reports = JSON.parse(localStorage.getItem('pos_reports')) || [];
         let qrImages = JSON.parse(localStorage.getItem('pos_qr_imgs')) || {};
-        let sets = JSON.parse(localStorage.getItem('pos_db_set')) || { n: "Smart POS", a: "Alamat Toko" };
         let cart = [];
+        let html5QrCode;
         let salesChart;
 
-        window.onload = () => { applySets(); renderAll(); renderDashboard(); };
+        window.onload = () => { renderAll(); renderDashboard(); };
+
+        function formatRP(n) { return "Rp " + parseInt(n).toLocaleString('id-ID'); }
 
         function showSection(id) {
             document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
             document.getElementById('section-' + id).classList.remove('hidden');
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            if(event) event.currentTarget.classList.add('active');
             if(id === 'dashboard') renderDashboard();
             renderAll();
         }
 
-        function formatRP(n) { return "Rp " + parseInt(n).toLocaleString('id-ID'); }
-
-        // --- DASHBOARD ANALYTICS ---
-        function renderDashboard() {
-            const dateFilter = document.getElementById('filter-date').value;
-            const prodFilter = document.getElementById('filter-prod').value;
-
-            let filtered = reports;
-            if(dateFilter) {
-                const targetDate = new Date(dateFilter).toLocaleDateString();
-                filtered = reports.filter(r => r.time === targetDate);
-            }
-            
-            let profit = 0, hppTotal = 0, outStockCount = 0;
-            let productStats = {};
-            dbRef.forEach(p => { 
-                productStats[p.nama] = 0; 
-                if(p.stok <= 0) outStockCount++;
-            });
-
-            filtered.forEach(r => {
-                r.items.forEach(item => {
-                    if(prodFilter === 'all' || item.nama === prodFilter) {
-                        profit += (item.qty * (item.jual - item.hpp));
-                        hppTotal += (item.qty * item.hpp);
-                        productStats[item.nama] = (productStats[item.nama] || 0) + item.qty;
-                    }
-                });
-            });
-
-            document.getElementById('dash-profit').innerText = formatRP(profit);
-            document.getElementById('dash-rugi').innerText = formatRP(hppTotal);
-            document.getElementById('dash-total-p').innerText = dbRef.length;
-            document.getElementById('dash-out-stock').innerText = outStockCount;
-
-            const sorted = Object.entries(productStats).sort((a,b) => b[1] - a[1]);
-            document.getElementById('list-top-5').innerHTML = sorted.slice(0,5).map(i => `<div class='d-flex justify-content-between'><span>${i[0]}</span><span class='badge bg-success'>${i[1]}</span></div>`).join('<hr class="my-1">');
-            document.getElementById('list-low-5').innerHTML = sorted.slice(-5).reverse().map(i => `<div class='d-flex justify-content-between'><span>${i[0]}</span><span class='badge bg-secondary'>${i[1]}</span></div>`).join('<hr class="my-1">');
-
-            updateChart(productStats);
+        // --- SCANNER LOGIC ---
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
+                (decodedText) => {
+                    handleAdd(decodedText);
+                    stopScanner(); // Stop sebentar setelah scan berhasil
+                    setTimeout(startScanner, 2000); // Mulai lagi setelah 2 detik
+                }
+            ).catch(err => alert("Kamera Gagal: " + err));
         }
 
-        function updateChart(data) {
-            const ctx = document.getElementById('salesChart').getContext('2d');
-            if(salesChart) salesChart.destroy();
-            salesChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(data),
-                    datasets: [{ label: 'Qty Terjual', data: Object.values(data), backgroundColor: '#3b82f6' }]
-                },
-                options: { plugins: { legend: { display: false } } }
-            });
+        function stopScanner() {
+            if(html5QrCode) html5QrCode.stop().catch(err => console.log(err));
         }
 
-        // --- CORE TRANSACTION ---
-        function handleAdd(name) {
-            const p = dbRef.find(x => x.nama === name);
+        // --- TRANSACTION LOGIC ---
+        function handleAdd(code) {
+            const p = dbRef.find(x => x.barcode === code || x.nama === code);
+            if(!p) return alert("Produk tidak ditemukan di Referensi!");
             if(p.stok <= 0) return alert("Stok Habis!");
+            
             let item = cart.find(c => c.nama === p.nama);
             if(item) { item.qty++; item.sub = item.qty * item.jual; }
             else { cart.push({ ...p, qty: 1, sub: parseInt(p.jual) }); }
@@ -247,89 +178,107 @@
             let h = '', t = 0;
             cart.forEach((c, i) => { 
                 t += c.sub; 
-                h += `<tr><td>${c.nama}</td><td>${formatRP(c.jual)}</td><td>${c.qty}</td><td>${formatRP(c.sub)}</td><td><button class='btn btn-sm text-danger' onclick='cart.splice(${i},1);renderCart()'>❌</button></td></tr>`;
+                h += `<tr><td>${c.nama}</td><td>${c.qty}</td><td>${formatRP(c.sub)}</td><td><button class='btn btn-sm' onclick='cart.splice(${i},1);renderCart()'>❌</button></td></tr>`;
             });
             document.getElementById('cart-table').innerHTML = h;
             document.getElementById('total-val').innerText = formatRP(t);
             document.getElementById('qris-bill').innerText = formatRP(t);
-            calcPayment();
         }
 
         function updatePayUI() {
             const m = document.getElementById('pay-method').value;
-            const uiQ = document.getElementById('ui-qris'), uiC = document.getElementById('ui-cash');
-            if(m === 'CASH') { uiQ.classList.add('hidden'); uiC.classList.remove('hidden'); }
-            else { 
-                uiQ.classList.remove('hidden'); uiC.classList.add('hidden'); 
+            const ui = document.getElementById('ui-qris');
+            if(m !== 'CASH') {
+                ui.classList.remove('hidden');
                 document.getElementById('display-qris-img').src = qrImages[m] || "";
-            }
+            } else ui.classList.add('hidden');
         }
 
-        function calcPayment() {
-            const tot = cart.reduce((a,b) => a + b.sub, 0);
-            const cash = document.getElementById('in-cash').value || 0;
-            document.getElementById('val-kembali').innerText = formatRP(cash > tot ? cash - tot : 0);
+        // --- REFERENSI & DATA ---
+        function saveRef() {
+            const c = document.getElementById('ref-code').value;
+            const n = document.getElementById('ref-nama').value;
+            const b = document.getElementById('ref-beli').value;
+            const j = document.getElementById('ref-jual').value;
+            dbRef.push({ barcode: c, nama: n, hpp: parseInt(b), jual: parseInt(j), stok: 100 });
+            localStorage.setItem('pos_db_ref', JSON.stringify(dbRef));
+            renderAll();
+        }
+
+        function renderAll() {
+            let hr = '', hs = '', d = '<option value="">-- Cari Barang --</option>';
+            dbRef.forEach((p, i) => {
+                hr += `<tr><td>${p.barcode}</td><td>${p.nama}</td><td>${formatRP(p.hpp)}</td><td>${formatRP(p.jual)}</td><td><button class='btn btn-sm' onclick='dbRef.splice(${i},1);renderAll()'>🗑️</button></td></tr>`;
+                hs += `<tr><td>${p.nama}</td><td class='fw-bold'>${p.stok}</td></tr>`;
+                d += `<option value="${p.barcode}">${p.nama}</option>`;
+            });
+            document.getElementById('ref-table-body').innerHTML = hr;
+            document.getElementById('stok-table-body').innerHTML = hs;
+            document.getElementById('tx-drop').innerHTML = d;
         }
 
         function previewStruk() {
-            if(!cart.length) return alert("Keranjang Kosong!");
-            let h = `<div class='text-center'><strong>${sets.n}</strong><br>${sets.a}</div><hr>`;
-            cart.forEach(c => h += `<div class='d-flex justify-content-between'><span>${c.nama} x${c.qty}</span><span>${formatRP(c.sub)}</span></div>`);
-            h += `<hr><div class='d-flex justify-content-between fw-bold'><span>TOTAL</span><span>${document.getElementById('total-val').innerText}</span></div><div class='text-center mt-3'><small>Metode: ${document.getElementById('pay-method').value.replace('qr_','').toUpperCase()}</small></div>`;
+            if(!cart.length) return;
+            let h = `<strong>STRUK KASIR</strong><hr>`;
+            cart.forEach(c => h += `<div>${c.nama} x${c.qty} = ${formatRP(c.sub)}</div>`);
+            h += `<hr><strong>TOTAL: ${document.getElementById('total-val').innerText}</strong>`;
             document.getElementById('receipt-content').innerHTML = h;
             new bootstrap.Modal('#modalStruk').show();
         }
 
         function confirmFinish() {
-            reports.push({ id: Date.now(), time: new Date().toLocaleDateString(), items: [...cart], total: cart.reduce((a,b) => a+b.sub, 0) });
+            reports.push({ time: new Date().toLocaleDateString(), items: [...cart], total: cart.reduce((a,b) => a+b.sub, 0) });
             cart.forEach(c => { let p = dbRef.find(x => x.nama === c.nama); if(p) p.stok -= c.qty; });
             localStorage.setItem('pos_reports', JSON.stringify(reports));
             localStorage.setItem('pos_db_ref', JSON.stringify(dbRef));
             window.print();
-            bootstrap.Modal.getInstance('#modalStruk').hide();
-            cart = []; refreshTx(); showSection('dashboard');
+            location.reload(); // Refresh untuk update dashboard
         }
 
-        // --- UTILS ---
-        function saveRef() {
-            const n = document.getElementById('ref-nama').value, h = document.getElementById('ref-beli').value, j = document.getElementById('ref-jual').value;
-            dbRef.push({ nama: n, hpp: parseInt(h), jual: parseInt(j), stok: 100 });
-            localStorage.setItem('pos_db_ref', JSON.stringify(dbRef));
-            renderAll();
-        }
-
-        function refreshTx() { 
-            cart = []; document.getElementById('in-cash').value = ''; 
-            renderCart(); 
-        }
-
-        function renderAll() {
-            let hr = '', hs = '', d = '<option value="">-- Pilih Barang --</option>', fd = '<option value="all">Semua Produk</option>';
-            dbRef.forEach((p, i) => {
-                hr += `<tr><td>${p.nama}</td><td>${formatRP(p.hpp)}</td><td>${formatRP(p.jual)}</td><td>${formatRP(p.jual-p.hpp)}</td><td><button class='btn btn-sm' onclick='dbRef.splice(${i},1);renderAll()'>🗑️</button></td></tr>`;
-                hs += `<tr><td>${p.nama}</td><td class='fw-bold ${p.stok < 10 ? 'text-danger' : ''}'>${p.stok}</td></tr>`;
-                d += `<option value="${p.nama}">${p.nama}</option>`;
-                fd += `<option value="${p.nama}">${p.nama}</option>`;
+        // --- DASHBOARD ANALYTICS ---
+        function renderDashboard() {
+            let profit = 0, modal = 0, outStock = 0;
+            let productStats = {};
+            dbRef.forEach(p => { 
+                productStats[p.nama] = 0;
+                if(p.stok <= 0) outStock++;
             });
-            document.getElementById('ref-table-body').innerHTML = hr;
-            document.getElementById('stok-table-body').innerHTML = hs;
-            document.getElementById('tx-drop').innerHTML = d;
-            document.getElementById('filter-prod').innerHTML = fd;
+
+            reports.forEach(r => {
+                r.items.forEach(item => {
+                    profit += (item.qty * (item.jual - item.hpp));
+                    modal += (item.qty * item.hpp);
+                    productStats[item.nama] = (productStats[item.nama] || 0) + item.qty;
+                });
+            });
+
+            document.getElementById('dash-profit').innerText = formatRP(profit);
+            document.getElementById('dash-rugi').innerText = formatRP(modal);
+            document.getElementById('dash-total-p').innerText = dbRef.length;
+            document.getElementById('dash-out-stock').innerText = outStock;
+
+            const sorted = Object.entries(productStats).sort((a,b) => b[1] - a[1]);
+            document.getElementById('list-top-5').innerHTML = sorted.slice(0,5).map(i => `<div class='d-flex justify-content-between'><span>${i[0]}</span><span class='badge bg-success'>${i[1]}</span></div>`).join('<hr class="my-1">');
+
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            if(salesChart) salesChart.destroy();
+            salesChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(productStats),
+                    datasets: [{ label: 'Qty Terjual', data: Object.values(productStats), backgroundColor: '#3b82f6' }]
+                }
+            });
         }
 
         function uploadQR(input, key) {
             if(input.files[0]) {
                 let r = new FileReader();
-                r.onload = (e) => { qrImages[key] = e.target.result; localStorage.setItem('pos_qr_imgs', JSON.stringify(qrImages)); alert("QR Terupload!"); };
+                r.onload = (e) => { qrImages[key] = e.target.result; localStorage.setItem('pos_qr_imgs', JSON.stringify(qrImages)); alert("QR Tersimpan!"); };
                 r.readAsDataURL(input.files[0]);
             }
         }
-
-        function saveSets() {
-            sets.n = document.getElementById('set-n').value; sets.a = document.getElementById('set-a').value;
-            localStorage.setItem('pos_db_set', JSON.stringify(sets)); applySets();
-        }
-        function applySets() { document.getElementById('set-n').value = sets.n; document.getElementById('set-a').value = sets.a; }
     </script>
 </body>
-</html>
+    </html>
+    
