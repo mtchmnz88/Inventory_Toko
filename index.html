@@ -3,93 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProPOS Shell v1.0</title>
+    <title>ProPOS Custom v1.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f1f5f9; overflow: hidden; }
-        .sidebar-item { transition: 0.2s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #94a3b8; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; color: #f1f5f9; overflow: hidden; }
+        .sidebar-item { transition: 0.2s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #94a3b8; font-size: 13px; }
         .sidebar-item:hover { background: rgba(255,255,255,0.05); color: white; }
-        .sidebar-item.active { background: #6366f1; color: white; }
+        .sidebar-item.active { background: #6366f1; color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+        .stat-card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 20px; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
 <body class="flex h-screen w-screen">
 
-    <aside class="w-64 bg-slate-900 border-r border-slate-800 p-5 flex flex-col gap-2">
-        <div class="text-2xl font-black italic text-indigo-500 mb-8 px-2">Pro<span class="text-white">POS</span></div>
+    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-6">
+        <div class="flex flex-col items-center gap-3 pb-6 border-b border-slate-800">
+            <div class="relative group cursor-pointer" onclick="document.getElementById('input-logo').click()">
+                <img id="logo-toko" src="https://via.placeholder.com/80" class="w-20 h-20 rounded-2xl object-cover border-2 border-indigo-500/50 group-hover:opacity-70 transition">
+                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                    <i data-lucide="camera" class="text-white w-6 h-6"></i>
+                </div>
+                <input type="file" id="input-logo" class="hidden" accept="image/*" onchange="gantiLogo(this)">
+            </div>
+            <div class="text-center">
+                <h2 id="nama-toko-side" class="font-extrabold text-lg tracking-tight">NAMA TOKO</h2>
+                <span class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Administrator</span>
+            </div>
+        </div>
         
-        <nav class="flex flex-col gap-1">
-            <div onclick="gantiMenu('dashboard')" id="m-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard"></i> Dashboard</div>
-            <div onclick="gantiMenu('referensi')" id="m-referensi" class="sidebar-item"><i data-lucide="package"></i> Referensi Produk</div>
-            <div onclick="gantiMenu('stok')" id="m-stok" class="sidebar-item"><i data-lucide="boxes"></i> Kelola Stok</div>
-            <div onclick="gantiMenu('transaksi')" id="m-transaksi" class="sidebar-item"><i data-lucide="shopping-cart"></i> Transaksi</div>
-            <div onclick="gantiMenu('report')" id="m-report" class="sidebar-item"><i data-lucide="file-text"></i> Report</div>
-            <div onclick="gantiMenu('setting')" id="m-setting" class="sidebar-item"><i data-lucide="settings"></i> Setting</div>
+        <nav class="flex flex-col gap-1 flex-1 overflow-y-auto">
+            <div onclick="gantiMenu('dashboard')" id="m-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard" class="w-4"></i> Dashboard</div>
+            <div onclick="gantiMenu('referensi')" id="m-referensi" class="sidebar-item"><i data-lucide="package" class="w-4"></i> Referensi Produk</div>
+            <div onclick="gantiMenu('stok')" id="m-stok" class="sidebar-item"><i data-lucide="boxes" class="w-4"></i> Kelola Stok</div>
+            <div onclick="gantiMenu('transaksi')" id="m-transaksi" class="sidebar-item"><i data-lucide="shopping-cart" class="w-4"></i> Transaksi</div>
+            <div onclick="gantiMenu('report')" id="m-report" class="sidebar-item"><i data-lucide="file-text" class="w-4"></i> Report</div>
+            <div onclick="gantiMenu('setting')" id="m-setting" class="sidebar-item"><i data-lucide="settings" class="w-4"></i> Setting</div>
         </nav>
     </aside>
 
-    <main class="flex-1 flex flex-col overflow-hidden">
-        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900/50">
-            <h2 id="judul-halaman" class="font-bold uppercase tracking-widest text-sm text-slate-400">Dashboard</h2>
-            <div id="jam" class="text-xs font-mono text-slate-500"></div>
+    <main class="flex-1 flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
+        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8">
+            <h2 id="judul-halaman" class="font-black uppercase tracking-tighter text-indigo-400">Dashboard</h2>
+            <div id="jam" class="text-[10px] font-mono text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800"></div>
         </header>
 
-        <div id="konten-utama" class="flex-1 overflow-y-auto p-6">
+        <div id="konten-utama" class="flex-1 overflow-y-auto p-8">
             </div>
     </main>
 
     <script>
-        // Inisialisasi Database Kosong
-        let db_sales = JSON.parse(localStorage.getItem('db_sales')) || [];
-        let db_produk = JSON.parse(localStorage.getItem('db_produk')) || [];
+        // Data Initialization
+        let db_cfg = JSON.parse(localStorage.getItem('db_cfg')) || { name: "MY STORE", logo: "" };
+        
+        // Fungsi Ganti Logo
+        function gantiLogo(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('logo-toko').src = e.target.result;
+                    db_cfg.logo = e.target.result;
+                    saveCfg();
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function saveCfg() { localStorage.setItem('db_cfg', JSON.stringify(db_cfg)); }
 
         // Fungsi Ganti Menu
         function gantiMenu(menu) {
-            // Update UI Sidebar
             document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
             document.getElementById('m-' + menu).classList.add('active');
             document.getElementById('judul-halaman').innerText = menu;
 
             const target = document.getElementById('konten-utama');
-
-            // Logika Tampilan per Menu
-            if(menu === 'dashboard') {
-                renderHalamanDashboard(target);
-            } else {
-                target.innerHTML = `<div class="flex items-center justify-center h-full opacity-20 text-2xl font-bold italic uppercase">Menu ${menu} Belum Diisi</div>`;
-            }
+            if(menu === 'dashboard') renderDashboard(target);
+            else target.innerHTML = `<div class="h-full flex items-center justify-center opacity-10 font-black text-4xl italic uppercase">Menu ${menu}</div>`;
             lucide.createIcons();
         }
 
-        // --- KHUSUS HALAMAN DASHBOARD ---
-        function renderHalamanDashboard(div) {
+        // --- RENDER DASHBOARD ANALITIK ---
+        function renderDashboard(div) {
             div.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 bg-slate-800/50 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-indigo-400">Grafik Profit</h3>
-                            <input type="date" id="filter-tgl" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs">
+                <div class="flex flex-wrap gap-4 justify-between items-end mb-8">
+                    <div class="flex gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Filter Tanggal</label>
+                            <input type="date" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs focus:ring-2 ring-indigo-500 outline-none block">
                         </div>
-                        <div class="h-64">
-                            <canvas id="chartProfit"></canvas>
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-slate-500 font-bold uppercase">Omzet Berdasarkan</label>
+                            <select class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none block">
+                                <option>KESELURUHAN</option>
+                                <option>HARIAN</option>
+                                <option>BULANAN</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="text-right">
+                            <p class="text-[10px] text-red-400 font-bold uppercase">Total Rugi (Rusak/Hilang)</p>
+                            <h3 class="text-2xl font-black">Rp 0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card mb-8">
+                    <h3 class="text-xs font-bold text-slate-400 mb-6 uppercase tracking-widest">Report Penjualan (Grafik)</h3>
+                    <div class="h-72">
+                        <canvas id="chartUtama"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="stat-card border-t-4 border-t-indigo-500">
+                        <h4 class="text-[10px] font-black text-indigo-400 uppercase mb-4 flex items-center gap-2">
+                            <i data-lucide="trophy" class="w-3"></i> Top 3 Terlaris
+                        </h4>
+                        <div class="space-y-3 text-xs" id="box-terlaris">
+                            <div class="flex justify-between"><span>Produk A</span><span class="font-bold">0</span></div>
                         </div>
                     </div>
 
-                    <div class="space-y-6">
-                        <div class="bg-slate-800/50 p-5 rounded-2xl border border-green-500/20">
-                            <h4 class="text-xs font-bold text-green-400 uppercase mb-4">Laku Keras (Top 5)</h4>
-                            <div id="list-laku" class="space-y-3 text-sm">
-                                <p class="opacity-30 italic">Belum ada data...</p>
-                            </div>
+                    <div class="stat-card border-t-4 border-t-pink-500">
+                        <h4 class="text-[10px] font-black text-pink-400 uppercase mb-4 flex items-center gap-2">
+                            <i data-lucide="trending-down" class="w-3"></i> 3 Kurang Diminati
+                        </h4>
+                        <div class="space-y-3 text-xs" id="box-tidak-laku">
+                            <div class="flex justify-between"><span>Produk Z</span><span class="font-bold">0</span></div>
                         </div>
+                    </div>
 
-                        <div class="bg-slate-800/50 p-5 rounded-2xl border border-red-500/20">
-                            <h4 class="text-xs font-bold text-red-400 uppercase mb-4">Stok Mati (Tidak Laku)</h4>
-                            <div id="list-mati" class="space-y-3 text-sm">
-                                <p class="opacity-30 italic">Belum ada data...</p>
-                            </div>
+                    <div class="stat-card lg:col-span-2">
+                        <h4 class="text-[10px] font-black text-slate-400 uppercase mb-4">Semua Barang Terjual</h4>
+                        <div class="max-h-32 overflow-y-auto space-y-2 pr-2 text-xs" id="box-semua-terjual">
+                            <p class="opacity-30 italic">Belum ada transaksi harian...</p>
                         </div>
                     </div>
                 </div>
@@ -97,41 +149,43 @@
             initChart();
         }
 
-        // Fungsi Grafik (Dummy dulu)
         function initChart() {
-            const ctx = document.getElementById('chartProfit').getContext('2d');
+            const ctx = document.getElementById('chartUtama').getContext('2d');
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+                    labels: ['01/04', '02/04', '03/04', '04/04', '05/04', '06/04', '07/04'],
                     datasets: [{
-                        label: 'Profit',
-                        data: [120, 190, 300, 500, 200, 300, 450],
+                        label: 'Penjualan',
+                        data: [0, 0, 0, 0, 0, 0, 0],
                         borderColor: '#6366f1',
+                        borderWidth: 4,
                         tension: 0.4,
+                        pointRadius: 0,
                         fill: true,
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)'
+                        backgroundColor: 'rgba(99, 102, 241, 0.05)'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { y: { display: false }, x: { grid: { display: false } } }
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#475569', size: 10 } },
+                        x: { grid: { display: false }, ticks: { color: '#475569', size: 10 } }
+                    }
                 }
             });
         }
 
-        // Jam Digital
-        setInterval(() => {
-            document.getElementById('jam').innerText = new Date().toLocaleString();
-        }, 1000);
-
-        // Jalankan dashboard pertama kali
+        // Update Jam & Init
+        setInterval(() => { document.getElementById('jam').innerText = new Date().toLocaleString(); }, 1000);
         window.onload = () => {
+            document.getElementById('nama-toko-side').innerText = db_cfg.name;
+            if(db_cfg.logo) document.getElementById('logo-toko').src = db_cfg.logo;
             gantiMenu('dashboard');
         };
     </script>
 </body>
 </html>
-                
+        
