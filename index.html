@@ -1,390 +1,294 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProPOS Custom v1.1 - FIXED</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
-    <script src="https://unpkg.com/html5-qrcode"></script>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <style>
+    /* --- CSS UNTUK TAMPILAN --- */
+    :root { 
+      --primary-dark: #2c3e50; 
+      --accent-color: #3498db; 
+      --bg-light: #f4f6f9;
+    }
+    body { background: var(--bg-light); font-size: 13px; font-family: 'Segoe UI', sans-serif; }
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; color: #f1f5f9; overflow: hidden; margin:0; }
-        .sidebar-item { transition: 0.2s; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #94a3b8; font-size: 13px; }
-        .sidebar-item:hover { background: rgba(255,255,255,0.05); color: white; }
-        .sidebar-item.active { background: #6366f1; color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
-        .stat-card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 20px; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        input::placeholder { color: #475569; }
-    </style>
+    /* Sidebar Styling */
+    .sidebar { 
+      width: 230px; position: fixed; height: 100vh; 
+      background: var(--primary-dark); color: white; padding-top: 10px;
+    }
+    .sidebar-brand { text-align: center; padding: 20px 10px; border-bottom: 1px solid #3e4f5f; }
+    .sidebar a { 
+      color: #bdc3c7; text-decoration: none; padding: 12px 20px; 
+      display: block; transition: 0.2s; border-left: 4px solid transparent;
+    }
+    .sidebar a:hover, .sidebar a.active { 
+      background: #34495e; color: white; border-left: 4px solid var(--accent-color); 
+    }
+
+    /* Content Area */
+    .main-content { margin-left: 240px; padding: 25px; }
+    .card { border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .hidden { display: none; }
+    
+    /* POS Styling */
+    .summary-card { 
+      background: white; padding: 20px; border-radius: 10px; 
+      border-right: 6px solid var(--accent-color);
+    }
+    #cart-table-wrapper { max-height: 350px; overflow-y: auto; }
+    .total-price { font-size: 2rem; font-weight: bold; color: #2c3e50; }
+  </style>
 </head>
-<body class="flex h-screen w-screen">
+<body>
 
-    <aside class="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-6">
-        <div class="flex items-center gap-3 pb-6 border-b border-slate-800">
-            <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white italic">P</div>
-            <div>
-                <div class="text-lg font-black italic text-indigo-500 leading-none">Pro <span class="text-white">POS</span></div>
-                <h2 class="font-bold text-[10px] text-slate-500 mt-1 uppercase tracking-widest">Management</h2>
-            </div>
-        </div>
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <img id="logoApp" src="
+"https://via.placeholder.com/60" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px;">
+      <h6 id="storeNameApp">Toko Kelontong</h6>
+    </div>
+    <a href="#" onclick="switchPage('dashboard')">📊 Dashboard</a>
+    <a href="#" onclick="switchPage('transaksi')" class="active">🛒 Transaksi Kasir</a>
+    <a href="#" onclick="switchPage('stok')">📦 Kelola Stok</a>
+    <a href="#" onclick="switchPage('referensi')">📋 Referensi Produk</a>
+    <a href="#" onclick="switchPage('report')">📜 Report Penjualan</a>
+    <a href="#" onclick="switchPage('setting')">⚙️ Pengaturan</a>
+  </div>
+
+  <div class="main-content">
+    
+    <div id="page-transaksi" class="content-page">
+      <h4 class="mb-4">Kasir / Transaksi Baru</h4>
+      <div class="row">
         
-        <nav class="flex flex-col gap-1 flex-1 overflow-y-auto">
-            <div onclick="gantiMenu('dashboard')" id="m-dashboard" class="sidebar-item active"><i data-lucide="layout-dashboard"></i> Dashboard</div>
-            <div onclick="gantiMenu('referensi')" id="m-referensi" class="sidebar-item"><i data-lucide="package"></i> Referensi Produk</div>
-            <div onclick="alert('Fitur segera hadir!')" class="sidebar-item"><i data-lucide="boxes"></i> Kelola Stok</div>
-            <div onclick="alert('Fitur segera hadir!')" class="sidebar-item"><i data-lucide="shopping-cart"></i> Transaksi</div>
-        </nav>
-    </aside>
-    
-    <main class="flex-1 flex flex-col overflow-hidden bg-slate-950">
-        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8">
-            <h2 id="judul-halaman" class="font-black uppercase tracking-widest text-indigo-400 text-xs">Dashboard</h2>
-            <div id="jam" class="text-[10px] font-mono text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800"></div>
-        </header>
-
-        <div id="konten-utama" class="flex-1 overflow-y-auto p-8">
+        <div class="col-md-8">
+          <div class="card p-3 mb-3">
+            <div class="input-group mb-3">
+              <span class="input-group-text bg-white">📸</span>
+              <input type="text" id="barcodeScanner" class="form-control form-control-lg" 
+                     placeholder="Scan Barcode / Ketik Kode Barang lalu Enter...">
             </div>
-    </main>
-
-    <script>
-        // --- 1. Database ---
-        let db_ref = JSON.parse(localStorage.getItem('db_propos_ref')) || [];
-
-        // --- 2. Navigasi ---
-        function gantiMenu(menu) {
-            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-            const btn = document.getElementById('m-' + menu);
-            if(btn) btn.classList.add('active');
             
-            document.getElementById('judul-halaman').innerText = menu;
-            const target = document.getElementById('konten-utama');
+            <div id="cart-table-wrapper">
+              <table class="table align-middle" id="cartTable">
+                <thead class="table-light">
+                  <tr>
+                    <th>Produk</th><th>Harga</th><th width="120">Jumlah</th><th>Subtotal</th><th>#</th>
+                  </tr>
+                </thead>
+                <tbody id="cartBody">
+                  </tbody>
+              </table>
+            </div>
+            <div class="mt-3">
+              <button class="btn btn-outline-secondary btn-sm" onclick="resetTransaksi()">Refresh / Reset</button>
+            </div>
+          </div>
+        </div>
 
-            if (menu === 'dashboard') renderDashboard(target);
-            else if (menu === 'referensi') renderReferensi(target);
-            
-            lucide.createIcons(); // Re-render ikon
-        }
+        <div class="col-md-4">
+          <div class="summary-card mb-3 text-end">
+            <span class="text-muted">Total Belanja</span>
+            <div class="total-price" id="textGrandTotal">Rp 0</div>
+          </div>
 
-        // --- 3. Render Halaman ---
-        function renderDashboard(div) {
-            div.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="stat-card border-l-4 border-indigo-500">
-                        <p class="text-[10px] font-black text-slate-500 uppercase">Total Barang</p>
-                        <h2 class="text-4xl font-black mt-1 text-white">${db_ref.length}</h2>
-                    </div>
-                    <div class="stat-card border-l-4 border-emerald-500">
-                        <p class="text-[10px] font-black text-slate-500 uppercase">Status Sistem</p>
-                        <h2 class="text-4xl font-black mt-1 text-emerald-400">AKTIF</h2>
-                    </div>
-                </div>
-                <div class="stat-card h-64"><canvas id="myChart"></canvas></div>
-            `;
-            const ctx = document.getElementById('myChart');
-            if(ctx) new Chart(ctx, { type: 'line', data: { labels: ['H-4','H-3','H-2','H-1','Hari Ini'], datasets: [{ label: 'Aktivitas', data: [0,0,0,0,0], borderColor: '#6366f1' }] }, options: { maintainAspectRatio: false } });
-        }
+          <div class="card p-3">
+            <label class="fw-bold mb-2">Metode Pembayaran</label>
+            <select id="payMethod" class="form-select mb-3" onchange="togglePaymentFields()">
+              <option value="CASH">Tunai (Cash)</option>
+              <option value="QRIS">QRIS</option>
+              <option value="SPLIT">Split (Cash + QRIS)</option>
+            </select>
 
-        function renderReferensi(div) {
-            div.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="stat-card h-fit border-t-4 border-indigo-500">
-                        <h3 class="text-xs font-black text-indigo-400 uppercase mb-6 italic">Input Produk</h3>
-                        <div class="space-y-4">
-                            <input id="in-nama" placeholder="NAMA PRODUK" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-white outline-none focus:ring-1 ring-indigo-500">
-                            <div class="flex gap-2">
-                                <input id="in-bc" placeholder="SCAN BARCODE" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-white outline-none">
-                                <button onclick="bukaScanner()" class="bg-indigo-600 p-3 rounded-xl hover:bg-indigo-500 transition"><i data-lucide="scan-line" class="text-white"></i></button>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <input id="in-beli" type="number" placeholder="HARGA BELI" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-emerald-400 outline-none">
-                                <input id="in-jual" type="number" placeholder="HARGA JUAL" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full text-indigo-400 outline-none">
-                            </div>
-                            <button onclick="simpanProduk()" class="w-full bg-indigo-600 py-3 rounded-xl text-[10px] font-black uppercase text-white shadow-lg">Simpan Data</button>
-                        </div>
-                    </div>
-                    <div class="lg:col-span-2">
-                        <div class="stat-card p-0 overflow-hidden">
-                            <table class="w-full text-left text-xs">
-                                <thead class="bg-slate-900/50 text-slate-500 uppercase font-black italic">
-                                    <tr><th class="p-4">Detail Produk</th><th class="p-4">Harga</th><th class="p-4">Aksi</th></tr>
-                                </thead>
-                                <tbody id="tabel-body"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-            updateTabel();
-            lucide.createIcons();
-        }
+            <div id="groupCash">
+              <label class="text-muted small">Uang Tunai</label>
+              <input type="number" id="inputCash" class="form-control mb-2" oninput="hitungKembalian()">
+            </div>
 
-        // --- 4. Logika Fungsi ---
-        function updateTabel() {
-            const body = document.getElementById('tabel-body');
-            if(!body) return;
-            body.innerHTML = db_ref.length ? db_ref.map((p, i) => `
-                <tr class="border-b border-slate-800 hover:bg-slate-800/20 transition">
-                    <td class="p-4"><b>${p.nama}</b><br><span class="text-[9px] text-slate-500">${p.bc || 'No Barcode'}</span></td>
-                    <td class="p-4">B: <span class="text-emerald-500">${p.beli}</span><br>J: <span class="text-indigo-400">${p.jual}</span></td>
-                    <td class="p-4"><button onclick="hapusProduk(${i})" class="text-pink-500 hover:scale-110 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
-                </tr>
-            `).join('') : '<tr><td colspan="3" class="p-10 text-center opacity-20 italic">Belum ada data</td></tr>';
-            lucide.createIcons();
-        }
+            <div id="groupQris" class="hidden">
+              <label class="text-muted small">Pilih QRIS</label>
+              <select id="selectQris" class="form-select mb-2">
+                <option>ShopeePay</option><option>GoPay</option><option>OVO</option><option>Dana</option>
+              </select>
+              <label class="text-muted small">Nominal QRIS</label>
+              <input type="number" id="inputQris" class="form-control mb-2" readonly>
+            </div>
 
-        function simpanProduk() {
-            const nama = document.getElementById('in-nama').value.toUpperCase();
-            const bc = document.getElementById('in-bc').value;
-            const beli = document.getElementById('in-beli').value || 0;
-            const jual = document.getElementById('in-jual').value || 0;
-            
-            if(!nama || !jual) return alert("Nama & Harga Jual Wajib Diisi!");
-            
-            db_ref.push({nama, bc, beli, jual});
-            localStorage.setItem('db_propos_ref', JSON.stringify(db_ref));
-            alert("Data Disimpan!");
-            renderReferensi(document.getElementById('konten-utama'));
-        }
+            <hr>
+            <div class="d-flex justify-content-between">
+              <span class="fw-bold">Kembalian:</span>
+              <span class="fw-bold text-success" id="textKembalian">Rp 0</span>
+            </div>
+            <button class="btn btn-primary w-100 py-3 mt-3 shadow" onclick="simpanKeDatabase()">
+               SIMPAN & CETAK STRUK
+            </button>
+          </div>
+        </div>
 
-        function hapusProduk(i) {
-            if(confirm("Hapus barang ini?")) {
-                db_ref.splice(i, 1);
-                localStorage.setItem('db_propos_ref', JSON.stringify(db_ref));
-                updateTabel();
-            }
-        }
+      </div>
+    </div>
 
-        // --- 5. Scanner ---
-        function bukaScanner() {
-            const mod = document.createElement('div');
-            mod.id = 'scan-mod';
-            mod.className = 'fixed inset-0 bg-black/95 z-[999] flex flex-col items-center justify-center';
-            mod.innerHTML = `
-                <div id="reader" class="w-full max-w-sm rounded-2xl overflow-hidden border-2 border-indigo-500"></div>
-                <button onclick="tutupScanner()" class="mt-8 bg-white text-black px-10 py-2 rounded-full font-black text-[10px]">BATAL</button>
-            `;
-            document.body.appendChild(mod);
-            const sc = new Html5Qrcode("reader");
-            window.activeScanner = sc;
-            sc.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
-                document.getElementById('in-bc').value = txt;
-                tutupScanner();
-            }).catch(e => { alert("Error Kamera!"); tutupScanner(); });
-        }
+    <div id="page-stok" class="content-page hidden"><h4>Menu Kelola Stok</h4><p>Fitur dalam pengembangan...</p></div>
+    <div id="page-dashboard" class="content-page hidden"><h4>Dashboard Analisa</h4><p>Grafik profit akan tampil di sini.</p></div>
 
-        function tutupScanner() {
-            if(window.activeScanner) window.activeScanner.stop().then(() => document.getElementById('scan-mod').remove()).catch(() => document.getElementById('scan-mod').remove());
-            else if(document.getElementById('scan-mod')) document.getElementById('scan-mod').remove();
-        }
+  </div>
 
-        // --- 6. Init ---
-        setInterval(() => { 
-            const j = document.getElementById('jam');
-            if(j) j.innerText = new Date().toLocaleString(); 
-        }, 1000);
+  <script>
+    let keranjang = [];
+    let totalBelanja = 0;
 
-        window.onload = () => gantiMenu('dashboard');
-    </script>
-</body>
-</html>
-            <div onclick="gantiMenu('referensi')" id="m-referensi" class="sidebar-item"><i data-lucide="package" class="w-4"></i> Referensi Produk</div>
-            <div onclick="gantiMenu('stok')" id="m-stok" class="sidebar-item"><i data-lucide="boxes" class="w-4"></i> Kelola Stok</div>
-            <div onclick="gantiMenu('transaksi')" id="m-transaksi" class="sidebar-item"><i data-lucide="shopping-cart" class="w-4"></i> Transaksi</div>
-        </nav>
-    </aside>
-    
-    <main class="flex-1 flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
-        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8">
-            <h2 id="judul-halaman" class="font-black uppercase tracking-tighter text-indigo-400 text-sm">Dashboard</h2>
-            <div id="jam" class="text-[10px] font-mono text-slate-500 bg-slate-900 px-3 py-1 rounded-full border border-slate-800"></div>
-        </header>
+    // 1. Inisialisasi: Ambil Nama Toko & Logo
+    window.onload = () => {
+      google.script.run.withSuccessHandler(settings => {
+        document.getElementById('storeNameApp').innerText = settings.namaToko;
+        document.getElementById('logoApp').src = settings.logoUrl;
+      }).getSettings();
+    };
 
-        <div id="konten-utama" class="flex-1 overflow-y-auto p-8"></div>
-    </main>
+    // 2. Navigasi Halaman
+    function switchPage(pageId) {
+      document.querySelectorAll('.content-page').forEach(p => p.classList.add('hidden'));
+      document.getElementById('page-' + pageId).classList.remove('hidden');
+      
+      // Update Menu Active
+      document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+    }
 
-    <script>
-        // --- DATABASE & SETUP ---
-        let db_ref = JSON.parse(localStorage.getItem('db_ref')) || [];
-        const fmtRp = (n) => "Rp " + new Intl.NumberFormat('id-ID').format(n || 0);
+    // 3. Logika Scan Barcode
+    document.getElementById('barcodeScanner').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        let code = e.target.value;
+        if (!code) return;
 
-        // --- NAVIGATION ---
-        function gantiMenu(menu) {
-            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
-            const elMenu = document.getElementById('m-' + menu);
-            if(elMenu) elMenu.classList.add('active');
-            
-            document.getElementById('judul-halaman').innerText = menu.toUpperCase();
-            const target = document.getElementById('konten-utama');
+        // Panggil fungsi di Kode.gs untuk cari barang
+        google.script.run.withSuccessHandler(barang => {
+          if (barang) {
+            tambahKeKeranjang(barang);
+          } else {
+            alert("Barang Tidak Ditemukan!");
+          }
+          e.target.value = ''; // Kosongkan input setelah scan
+        }).getProductData(code);
+      }
+    });
 
-            if (menu === 'dashboard') renderDashboard(target);
-            else if (menu === 'referensi') renderReferensi(target);
-            else target.innerHTML = `<div class="h-full flex items-center justify-center opacity-10 font-black text-4xl italic">MENU ${menu.toUpperCase()} SEGERA HADIR</div>`;
-            
-            lucide.createIcons();
-        }
+    // 4. Tambah Barang ke Keranjang
+    function tambahKeKeranjang(barang) {
+      // Cek apakah barang sudah ada (logika update qty)
+      let itemAda = keranjang.find(i => i.nama === barang.nama);
+      
+      if (itemAda) {
+        itemAda.qty += 1;
+        itemAda.total = itemAda.qty * itemAda.jual;
+      } else {
+        keranjang.push({
+          barcode: barang.barcode,
+          nama: barang.nama,
+          jual: barang.jual,
+          qty: 1,
+          total: barang.jual
+        });
+      }
+      renderTampilanKeranjang();
+    }
 
-        // --- DASHBOARD ---
-        function renderDashboard(div) {
-            div.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="stat-card border-l-4 border-indigo-500">
-                        <p class="text-[10px] font-bold text-slate-500 uppercase">Total Profit</p>
-                        <h2 class="text-3xl font-black mt-1">Rp 0</h2>
-                    </div>
-                    <div class="stat-card border-l-4 border-pink-500">
-                        <p class="text-[10px] font-bold text-slate-500 uppercase">Total Produk</p>
-                        <h2 class="text-3xl font-black mt-1">${db_ref.length}</h2>
-                    </div>
-                </div>
-                <div class="stat-card h-64"><canvas id="chartUtama"></canvas></div>
-            `;
-            const ctx = document.getElementById('chartUtama');
-            if(ctx) new Chart(ctx, { type: 'line', data: { labels: ['H-6','H-5','H-4','H-3','H-2','H-1','NOW'], datasets: [{ label: 'Sales', data: [0,0,0,0,0,0,0], borderColor: '#6366f1', tension: 0.4 }] }, options: { maintainAspectRatio: false } });
-        }
+    // 5. Update Tampilan Tabel
+    function renderTampilanKeranjang() {
+      let html = '';
+      totalBelanja = 0;
 
-        // --- REFERENSI & SCANNER ---
-        function renderReferensi(div) {
-            div.innerHTML = `
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="stat-card h-fit border-t-4 border-indigo-500">
-                        <h3 class="text-xs font-black text-indigo-400 uppercase mb-6 italic">Input Data Produk</h3>
-                        <div class="space-y-4">
-                            <input id="ref-nama" placeholder="NAMA BARANG" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm w-full outline-none focus:ring-2 ring-indigo-500 uppercase text-white">
-                            <div class="flex gap-2">
-                                <input id="ref-bc" placeholder="BARCODE" class="bg
-    <aside>
-        <h2 style="color: #6366f1; margin-bottom: 30px;">Pro<span style="color:white">POS</span></h2>
-        <div onclick="gantiMenu('dashboard')" id="m-dashboard" class="menu-item active">Dashboard</div>
-        <div onclick="gantiMenu('referensi')" id="m-referensi" class="menu-item">Referensi Produk</div>
-        <div onclick="alert('Menu dalam pengembangan')" class="menu-item">Kelola Stok</div>
-        <div onclick="alert('Menu dalam pengembangan')" class="menu-item">Transaksi</div>
-    </aside>
+      keranjang.forEach((item, index) => {
+        totalBelanja += item.total;
+        html += `
+          <tr>
+            <td><strong>${item.nama}</strong></td>
+            <td>${item.jual.toLocaleString('id-ID')}</td>
+            <td>
+              <div class="input-group input-group-sm">
+                <button class="btn btn-outline-secondary" onclick="ubahQty(${index}, -1)">-</button>
+                <input type="text" class="form-control text-center" value="${item.qty}" readonly>
+                <button class="btn btn-outline-secondary" onclick="ubahQty(${index}, 1)">+</button>
+              </div>
+            </td>
+            <td>${item.total.toLocaleString('id-ID')}</td>
+            <td><button class="btn btn-sm text-danger" onclick="hapusItem(${index})">🗑️</button></td>
+          </tr>`;
+      });
 
-    <main>
-        <header>
-            <h3 id="judul-halaman">DASHBOARD</h3>
-            <div id="jam" style="font-size: 12px; color: #94a3b8;"></div>
-        </header>
-        <div id="konten-utama"></div>
-    </main>
+      document.getElementById('cartBody').innerHTML = html;
+      document.getElementById('textGrandTotal').innerText = "Rp " + totalBelanja.toLocaleString('id-ID');
+      hitungKembalian(); // Update otomatis potongan split bill
+    }
 
-    <script>
-        // Data Global
-        let db_ref = JSON.parse(localStorage.getItem('db_ref_pos')) || [];
+    // 6. Logika Pembayaran & Split Bill
+    function togglePaymentFields() {
+      let metode = document.getElementById('payMethod').value;
+      document.getElementById('groupCash').classList.toggle('hidden', metode === 'QRIS');
+      document.getElementById('groupQris').classList.toggle('hidden', metode === 'CASH');
+      hitungKembalian();
+    }
 
-        // Fungsi Ganti Halaman
-        function gantiMenu(menu) {
-            // Update UI Menu
-            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-            document.getElementById('m-' + menu).classList.add('active');
-            document.getElementById('judul-halaman').innerText = menu.toUpperCase();
+    function hitungKembalian() {
+      let metode = document.getElementById('payMethod').value;
+      let tunai = parseFloat(document.getElementById('inputCash').value) || 0;
+      let qrisInput = document.getElementById('inputQris');
+      let kembalianText = document.getElementById('textKembalian');
 
-            const target = document.getElementById('konten-utama');
-            if (menu === 'dashboard') renderDashboard(target);
-            if (menu === 'referensi') renderReferensi(target);
-        }
+      if (metode === 'SPLIT') {
+        let sisaTagihan = totalBelanja - tunai;
+        qrisInput.value = sisaTagihan > 0 ? sisaTagihan : 0;
+        let lebih = tunai - totalBelanja;
+        kembalianText.innerText = "Rp " + (lebih > 0 ? lebih.toLocaleString('id-ID') : 0);
+      } else if (metode === 'CASH') {
+        let kembalian = tunai - totalBelanja;
+        kembalianText.innerText = "Rp " + (kembalian > 0 ? kembalian.toLocaleString('id-ID') : 0);
+      } else {
+        qrisInput.value = totalBelanja;
+        kembalianText.innerText = "Rp 0";
+      }
+    }
 
-        // Render Dashboard
-        function renderDashboard(target) {
-            target.innerHTML = `
-                <div class="stat-card">
-                    <h3>Selamat Datang di ProPOS</h3>
-                    <p style="color: #94a3b8; margin-top: 10px;">Total Produk Terdaftar: <b>${db_ref.length} Barang</b></p>
-                </div>
-            `;
-        }
+    // 7. Simpan Transaksi Ke Google Sheets
+    function simpanKeDatabase() {
+      if (keranjang.length === 0) return alert("Keranjang masih kosong!");
 
-        // Render Referensi
-        function renderReferensi(target) {
-            target.innerHTML = `
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <div class="stat-card" style="flex: 1; min-width: 300px;">
-                        <h3>Tambah Produk</h3>
-                        <div style="margin-top: 15px;">
-                            <input type="text" id="nama" placeholder="Nama Barang (Wajib)">
-                            <input type="text" id="barcode" placeholder="Barcode (Opsional)">
-                            <input type="number" id="beli" placeholder="Harga Beli">
-                            <input type="number" id="jual" placeholder="Harga Jual (Wajib)">
-                            <button onclick="simpanBarang()">SIMPAN BARANG</button>
-                        </div>
-                    </div>
-                    <div class="stat-card" style="flex: 2; min-width: 400px;">
-                        <h3>Daftar Barang</h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Produk</th>
-                                    <th>Beli</th>
-                                    <th>Jual</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabel-barang"></tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-            tampilkanTabel();
-        }
+      let dataPembayaran = {
+        items: keranjang,
+        metode: document.getElementById('payMethod').value,
+        cash: document.getElementById('inputCash').value,
+        qris: document.getElementById('inputQris').value,
+        tipeQris: document.getElementById('selectQris').value
+      };
 
-        // Logika Simpan Data
-        function simpanBarang() {
-            const nama = document.getElementById('nama').value;
-            const bc = document.getElementById('barcode').value;
-            const beli = document.getElementById('beli').value || 0;
-            const jual = document.getElementById('jual').value;
+      google.script.run.withSuccessHandler(respon => {
+        alert(respon);
+        resetTransaksi();
+      }).processFinalTransaction(dataPembayaran);
+    }
 
-            if (!nama || !jual) {
-                alert("Nama dan Harga Jual tidak boleh kosong!");
-                return;
-            }
+    function ubahQty(index, n) {
+      if (keranjang[index].qty + n > 0) {
+        keranjang[index].qty += n;
+        keranjang[index].total = keranjang[index].qty * keranjang[index].jual;
+        renderTampilanKeranjang();
+      }
+    }
 
-            db_ref.push({ nama, bc, beli, jual });
-            localStorage.setItem('db_ref_pos', JSON.stringify(db_ref));
-            
-            alert("Barang berhasil disimpan!");
-            renderReferensi(document.getElementById('konten-utama')); // Refresh halaman
-        }
+    function hapusItem(index) {
+      keranjang.splice(index, 1);
+      renderTampilanKeranjang();
+    }
 
-        // Tampilkan Tabel
-        function tampilkanTabel() {
-            const tbody = document.getElementById('tabel-barang');
-            if (!tbody) return;
-            
-            if (db_ref.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#555">Belum ada data</td></tr>';
-                return;
-            }
+    function resetTransaksi() {
+      keranjang = [];
+      document.getElementById('inputCash').value = '';
+      renderTampilanKeranjang();
+    }
+  </script>
 
-            tbody.innerHTML = db_ref.map((item, index) => `
-                <tr>
-                    <td><b>${item.nama}</b><br><small style="color:#666">${item.bc || '-'}</small></td>
-                    <td>Rp ${item.beli}</td>
-                    <td>Rp ${item.jual}</td>
-                    <td><button class="btn-hapus" onclick="hapusBarang(${index})">Hapus</button></td>
-                </tr>
-            `).join('');
-        }
-
-        function hapusBarang(index) {
-            if (confirm("Hapus barang ini?")) {
-                db_ref.splice(index, 1);
-                localStorage.setItem('db_ref_pos', JSON.stringify(db_ref));
-                renderReferensi(document.getElementById('konten-utama'));
-            }
-        }
-
-        // Jam & Start
-        setInterval(() => {
-            const jamEl = document.getElementById('jam');
-            if(jamEl) jamEl.innerText = new Date().toLocaleString('id-ID');
-        }, 1000);
-
-        window.onload = () => gantiMenu('dashboard');
-    </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
