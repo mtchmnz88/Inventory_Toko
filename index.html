@@ -84,6 +84,7 @@
                 <div class="col-md-4">
                     <div class="card p-3">
                         <h6>Barang Laku Keras</h6>
+                        <h6>Barang Sepi Peminat</h6>
                         <div id="list-best-seller" class="small mt-2"></div>
                     </div>
                 </div>
@@ -119,6 +120,7 @@
                             <option value="masuk">Stok Tambah</option>
                             <option value="hilang">Stok Hilang</option>
                             <option value="rusak">Stok Rusak</option>
+                            <option value="rusak">Stok Retur</option>
                         </select>
                     </div>
                     <div class="col-md-2"><input type="number" id="st-qty" class="form-control" value="1"></div>
@@ -134,6 +136,7 @@
                                 <th>Masuk</th>
                                 <th>Hilang</th>
                                 <th>Rusak</th>
+                                <th>Retur</th>
                                 <th>Terjual</th>
                                 <th class="table-primary text-white">Sisa Stok</th>
                                 <th>Status</th>
@@ -173,9 +176,9 @@
                     <div class="card p-3">
                         <label class="fw-bold mb-1">Metode Bayar</label>
                         <select id="pay-mode" class="form-select mb-3" onchange="togglePayUI()">
-                            <option value="CASH">1 Metode: CASH</option>
-                            <option value="QRIS">1 Metode: QRIS</option>
-                            <option value="SPLIT">2 Metode: SPLIT (Cash + QRIS)</option>
+                            <option value="CASH">CASH</option>
+                            <option value="QRIS">QRIS</option>
+                            <option value="SPLIT">SPLIT (Cash + QRIS)</option>
                         </select>
 
                         <div id="ui-cash">
@@ -317,32 +320,71 @@
         }
 
         // --- MANAJEMEN REFERENSI ---
-        function saveRef() {
-            const b = document.getElementById('ref-barcode').value;
-            const n = document.getElementById('ref-nama').value;
-            const pb = parseInt(document.getElementById('ref-beli').value);
-            const pj = parseInt(document.getElementById('ref-jual').value);
+        // Ganti fungsi renderRef yang lama dengan ini
+function renderRef(filter) {
+    let h = '';
+    dbRef.filter(x => x.nama.toLowerCase().includes(filter.toLowerCase())).forEach((p, i) => {
+        h += `<tr>
+            <td>${p.barcode}</td>
+            <td>${p.nama}</td>
+            <td>${formatRP(p.beli)}</td>
+            <td>${formatRP(p.jual)}</td>
+            <td>
+                <button class="btn btn-sm btn-warning" onclick="editRef(${i})"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="dbRef.splice(${i},1);saveData();"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    document.getElementById('ref-table-body').innerHTML = h;
+}
 
-            if(!b || !n || isNaN(pb)) return alert("Isi data produk!");
-            
-            // Cek duplikasi barcode
-            if(dbRef.find(x => x.barcode === b)) return alert("Barcode sudah terdaftar!");
+// Tambahkan fungsi baru untuk menarik data ke input
+let editIndex = -1;
+function editRef(index) {
+    const p = dbRef[index];
+    document.getElementById('ref-barcode').value = p.barcode;
+    document.getElementById('ref-nama').value = p.nama;
+    document.getElementById('ref-beli').value = p.beli;
+    document.getElementById('ref-jual').value = p.jual;
+    
+    editIndex = index; // Simpan index yang sedang diedit
+    const btn = document.querySelector("#section-referensi .btn-primary");
+    btn.innerText = "Update Produk";
+    btn.className = "btn btn-warning w-100";
+}
 
-            dbRef.push({ barcode: b, nama: n, beli: pb, jual: pj });
-            
-            // Inisialisasi Kelola Barang jika nama baru
-            let existStock = dbStock.find(x => x.nama === n);
-            if(!existStock) {
-                dbStock.push({ nama: n, codes: [b], awal: 0, masuk: 0, hilang: 0, rusak: 0, terjual: 0 });
-            } else {
-                if(!existStock.codes.includes(b)) existStock.codes.push(b);
-            }
+// Update fungsi saveRef untuk menangani mode "Edit"
+function saveRef() {
+    const b = document.getElementById('ref-barcode').value;
+    const n = document.getElementById('ref-nama').value;
+    const pb = parseInt(document.getElementById('ref-beli').value);
+    const pj = parseInt(document.getElementById('ref-jual').value);
 
-            saveData();
-            clearInputs('section-referensi');
-            alert("Data Berhasil di Simpan");
+    if(!b || !n || isNaN(pb)) return alert("Isi data produk!");
+
+    if (editIndex > -1) {
+        // Mode Update
+        dbRef[editIndex] = { barcode: b, nama: n, beli: pb, jual: pj };
+        editIndex = -1;
+        const btn = document.querySelector("#section-referensi .btn-warning");
+        btn.innerText = "Simpan Produk";
+        btn.className = "btn btn-primary w-100";
+    } else {
+        // Mode Simpan Baru
+        if(dbRef.find(x => x.barcode === b)) return alert("Barcode sudah terdaftar!");
+        dbRef.push({ barcode: b, nama: n, beli: pb, jual: pj });
+        
+        let existStock = dbStock.find(x => x.nama === n);
+        if(!existStock) {
+            dbStock.push({ nama: n, codes: [b], awal: 0, masuk: 0, hilang: 0, rusak: 0, terjual: 0 });
         }
+    }
 
+    saveData();
+    clearInputs('section-referensi');
+    alert("Data Berhasil di Simpan/Update");
+}
+        
         // --- KELOLA BARANG (STOK) ---
         function processStock() {
             const code = document.getElementById('st-barcode').value;
@@ -464,39 +506,58 @@
         }
 
         function previewReceipt() {
-            if(cart.length === 0) return alert("Keranjang kosong!");
-            const total = cart.reduce((a, b) => a + b.sub, 0);
-            const pay = (parseInt(document.getElementById('in-cash').value) || 0) + (parseInt(document.getElementById('in-qris').value) || 0);
-            
-            if(pay < total) return alert("Pembayaran Kurang!");
+    // 1. Cek apakah keranjang kosong
+    if (cart.length === 0) {
+        return alert("Wah, keranjangnya masih kosong nih!");
+    }
 
-            let h = `
-                <div style="font-weight:bold; font-size:14px;">${settings.name}</div>
-                <div>${settings.addr}</div>
-                <div>WA: ${settings.wa}</div>
-                <hr style="border-top:1px dashed #000">
-                <div style="text-align:left">
-                    NO: ${document.getElementById('tx-no').value}<br>
-                    TGL: ${document.getElementById('tx-date').value}
-                </div>
-                <hr style="border-top:1px dashed #000">
-                <table style="width:100%">
-            `;
-            cart.forEach(c => {
-                h += `<tr><td colspan="2">${c.nama}</td></tr>
-                      <tr><td>${c.qty} x ${formatRP(c.jual)}</td><td style="text-align:right">${formatRP(c.sub)}</td></tr>`;
-            });
-            h += `</table><hr style="border-top:1px dashed #000">
-                  <div style="display:flex; justify-content:space-between; font-weight:bold"><span>GRAND TOTAL</span><span>${formatRP(total)}</span></div>
-                  <div style="display:flex; justify-content:space-between"><span>BAYAR</span><span>${formatRP(pay)}</span></div>
-                  <div style="display:flex; justify-content:space-between"><span>KEMBALI</span><span>${document.getElementById('val-kembali').innerText}</span></div>
-                  <hr style="border-top:1px dashed #000">
-                  <div style="font-size:10px">${settings.footer}</div>
-                  <div style="font-size:9px">IG: ${settings.ig} | TikTok: ${settings.tiktok}</div>
-            `;
-            document.getElementById('receipt-content').innerHTML = h;
-            new bootstrap.Modal('#modalStruk').show();
-        }
+    const total = cart.reduce((a, b) => a + b.sub, 0);
+    const mode = document.getElementById('pay-mode').value;
+    const cash = parseInt(document.getElementById('in-cash').value) || 0;
+    const qris = parseInt(document.getElementById('in-qris').value) || 0;
+    
+    // 2. Logika validasi pembayaran sesuai metode
+    if (mode === 'CASH' && cash < total) {
+        return alert("Uang tunai kurang dari total belanja!");
+    } else if (mode === 'SPLIT' && (cash + qris) < total) {
+        return alert("Total Cash + QRIS masih kurang!");
+    }
+
+    // 3. Jika aman, buat konten struk
+    let h = `
+        <div style="font-weight:bold; font-size:14px; margin-bottom:5px;">${settings.name}</div>
+        <div style="font-size:10px;">${settings.addr}</div>
+        <div style="font-size:10px;">WA: ${settings.wa}</div>
+        <hr style="border-top:1px dashed #000; margin: 10px 0;">
+        <div style="text-align:left; font-size:10px;">
+            ID: ${document.getElementById('tx-no').value}<br>
+            TGL: ${document.getElementById('tx-date').value}
+        </div>
+        <hr style="border-top:1px dashed #000; margin: 10px 0;">
+        <table style="width:100%; font-size:11px;">
+    `;
+
+    cart.forEach(c => {
+        h += `<tr><td colspan="2" style="text-align:left;">${c.nama}</td></tr>
+              <tr><td style="text-align:left;">${c.qty} x ${formatRP(c.jual)}</td><td style="text-align:right;">${formatRP(c.sub)}</td></tr>`;
+    });
+
+    h += `</table><hr style="border-top:1px dashed #000; margin: 10px 0;">
+          <div style="display:flex; justify-content:space-between; font-weight:bold;"><span>TOTAL</span><span>${formatRP(total)}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>METODE</span><span>${mode}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>BAYAR</span><span>${formatRP(cash + qris)}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>KEMBALI</span><span>${document.getElementById('val-kembali').innerText}</span></div>
+          <hr style="border-top:1px dashed #000; margin: 10px 0;">
+          <div style="font-size:10px; font-style:italic;">${settings.footer}</div>
+          <div style="font-size:9px;">IG: ${settings.ig} | TikTok: ${settings.tiktok}</div>
+    `;
+
+    // 4. Masukkan ke dalam modal preview dan tampilkan
+    document.getElementById('receipt-content').innerHTML = h;
+    
+    // Pemicu modal Bootstrap
+    var myModal = new bootstrap.Modal(document.getElementById('modalStruk'));
+    myModal.show();
 
         function confirmPayment() {
             // Update Stok Terjual
